@@ -82,10 +82,15 @@ coat under heavy dark brindle patching, a solid dark head with a white blaze
 down the muzzle, dark drop ears, amber eyes, black ticking down her legs — and
 her pink pearl necklace, which is her default accessory.
 
-**Scooby**'s build is a placeholder: a taller, heavier tan hound with a dark
-muzzle mask and a red bandana. Send reference photos and his coat, build, ears
-and markings can be matched the way Cherry's were — the whole description lives
-in one object in `js/dogs.js`.
+Her tongue hangs out the way it does in most photographs of her: always while
+she pants, and otherwise on and off as she idles.
+
+**Scooby** is drawn from his photo too: a bigger, heavier shepherd mix in sandy
+tan, with large dark folded ears, black brow marks over the eyes, a cream muzzle
+gone grey around the lips and chin, and his light blue collar.
+
+Both dogs are described entirely by data — coat colours, patch shapes, ear
+length, muzzle depth, personality weights — in one object each in `js/dogs.js`.
 
 ## Code layout
 

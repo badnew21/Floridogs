@@ -66,41 +66,114 @@
   }
 
   /* --------------------------------------------------------------- drawing -- */
-  function tapered(ctx, ax, ay, bx, by, w1, w2, color) {
-    var dx = bx - ax, dy = by - ay, len = Math.sqrt(dx * dx + dy * dy) || 0.001;
-    var nx = -dy / len, ny = dx / len;
-    ctx.beginPath();
-    ctx.moveTo(ax + nx * w1, ay + ny * w1);
-    ctx.lineTo(bx + nx * w2, by + ny * w2);
-    ctx.lineTo(bx - nx * w2, by - ny * w2);
-    ctx.lineTo(ax - nx * w1, ay - ny * w1);
-    ctx.closePath();
+  /* One smooth limb through a set of joints. Sampling a Catmull-Rom centreline
+     and offsetting it by an interpolated half-width gives a single closed
+     outline, so elbows and hocks read as bends in one leg rather than as
+     separate segments butted together. */
+  function catmull(p0, p1, p2, p3, t) {
+    var t2 = t * t, t3 = t2 * t;
+    return {
+      x: 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t +
+          (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 +
+          (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
+      y: 0.5 * ((2 * p1.y) + (-p0.y + p2.y) * t +
+          (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 +
+          (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3)
+    };
+  }
+
+  function widthAt(widths, u) {
+    var n = widths.length - 1;
+    var f = U.clamp(u, 0, 1) * n;
+    var i = Math.min(Math.floor(f), n - 1);
+    return U.lerp(widths[i], widths[i + 1], f - i);
+  }
+
+  function limbPath(pts, widths, perSeg) {
+    perSeg = perSeg || 7;
+    var segs = pts.length - 1;
+    var samples = [];
+    for (var i = 0; i < segs; i++) {
+      var p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(segs, i + 2)];
+      for (var j = 0; j < perSeg; j++) {
+        var t = j / perSeg;
+        samples.push({ p: catmull(p0, p1, p2, p3, t), u: (i + t) / segs });
+      }
+    }
+    samples.push({ p: pts[segs], u: 1 });
+
+    var left = [], right = [];
+    for (var k = 0; k < samples.length; k++) {
+      var prev = samples[Math.max(0, k - 1)].p, next = samples[Math.min(samples.length - 1, k + 1)].p;
+      var dx = next.x - prev.x, dy = next.y - prev.y;
+      var len = Math.sqrt(dx * dx + dy * dy) || 0.001;
+      var nx = -dy / len, ny = dx / len;
+      var w = widthAt(widths, samples[k].u);
+      var c = samples[k].p;
+      left.push({ x: c.x + nx * w, y: c.y + ny * w, cx: c.x, cy: c.y, w: w });
+      right.push({ x: c.x - nx * w, y: c.y - ny * w });
+    }
+
+    var path = new Path2D();
+    path.moveTo(left[0].x, left[0].y);
+    for (var a = 1; a < left.length; a++) path.lineTo(left[a].x, left[a].y);
+    /* Round both ends. Both arcs sweep anticlockwise: the offset normal leads the
+       centreline by a quarter turn, so the clockwise sweep would cut back across
+       the limb instead of capping it. */
+    var endC = left[left.length - 1];
+    path.arc(endC.cx, endC.cy, endC.w,
+             Math.atan2(left[left.length - 1].y - endC.cy, left[left.length - 1].x - endC.cx),
+             Math.atan2(right[right.length - 1].y - endC.cy, right[right.length - 1].x - endC.cx), true);
+    for (var b = right.length - 1; b >= 0; b--) path.lineTo(right[b].x, right[b].y);
+    var startC = left[0];
+    path.arc(startC.cx, startC.cy, startC.w,
+             Math.atan2(right[0].y - startC.cy, right[0].x - startC.cx),
+             Math.atan2(left[0].y - startC.cy, left[0].x - startC.cx), true);
+    path.closePath();
+    return path;
+  }
+
+  function limb(ctx, pts, widths, color) {
+    var path = limbPath(pts, widths);
     ctx.fillStyle = color;
-    ctx.fill();
-    ctx.beginPath(); ctx.arc(bx, by, w2, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(ax, ay, w1, 0, Math.PI * 2); ctx.fill();
+    ctx.fill(path);
+    return path;
   }
 
   function legPath(ctx, rig, color, thick, shade) {
-    var c = shade ? shade : color;
-    tapered(ctx, rig.rx, rig.ry, rig.jx, rig.jy, thick * 1.5, thick * 0.85, c);
-    tapered(ctx, rig.jx, rig.jy, rig.kx, rig.ky, thick * 0.85, thick * 0.52, c);
-    tapered(ctx, rig.kx, rig.ky, rig.px, rig.py, thick * 0.52, thick * 0.56, c);
+    var c = shade || color;
+    return limb(ctx,
+      [{ x: rig.rx, y: rig.ry }, { x: rig.jx, y: rig.jy }, { x: rig.kx, y: rig.ky }, { x: rig.px, y: rig.py }],
+      [thick * 1.45, thick * 0.92, thick * 0.6, thick * 0.56],
+      c);
   }
 
-  function paw(ctx, x, y, r, color, toes) {
+  function paw(ctx, x, y, r, color, toes, nail) {
+    ctx.save();
     ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.ellipse(x, y - r * 0.35, r * 1.15, r * 0.8, 0, 0, Math.PI * 2);
+    ctx.ellipse(x, y - r * 0.34, r * 1.08, r * 0.8, 0, 0, Math.PI * 2);
     ctx.fill();
     if (toes) {
-      ctx.fillStyle = 'rgba(0,0,0,0.16)';
-      for (var i = -1; i <= 1; i++) {
+      ctx.strokeStyle = 'rgba(0,0,0,0.10)';
+      ctx.lineWidth = r * 0.2;
+      ctx.lineCap = 'round';
+      for (var i = -1; i <= 1; i += 2) {
         ctx.beginPath();
-        ctx.ellipse(x + i * r * 0.55, y - r * 0.18, r * 0.24, r * 0.3, 0, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.moveTo(x + i * r * 0.34, y - r * 0.62);
+        ctx.lineTo(x + i * r * 0.4, y - r * 0.16);
+        ctx.stroke();
+      }
+      if (nail) {
+        ctx.fillStyle = nail;
+        for (var n = -1; n <= 1; n++) {
+          ctx.beginPath();
+          ctx.ellipse(x + n * r * 0.58, y - r * 0.04, r * 0.1, r * 0.14, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
     }
+    ctx.restore();
   }
 
   /* Torso silhouette: one closed curve through withers, back, croup, rump,
@@ -145,15 +218,24 @@
 
   function blob(ctx, x, y, rx, ry, rot, seed) {
     var rnd = U.seeded(seed);
-    ctx.beginPath();
-    var steps = 12;
-    for (var i = 0; i <= steps; i++) {
+    var steps = 12, pts = [];
+    for (var i = 0; i < steps; i++) {
       var a = (i / steps) * Math.PI * 2;
-      var wob = 0.78 + rnd() * 0.44;
+      var wob = 0.80 + rnd() * 0.40;
       var px = Math.cos(a) * rx * wob, py = Math.sin(a) * ry * wob;
-      var rx2 = px * Math.cos(rot) - py * Math.sin(rot);
-      var ry2 = px * Math.sin(rot) + py * Math.cos(rot);
-      if (i === 0) ctx.moveTo(x + rx2, y + ry2); else ctx.lineTo(x + rx2, y + ry2);
+      pts.push({
+        x: x + px * Math.cos(rot) - py * Math.sin(rot),
+        y: y + px * Math.sin(rot) + py * Math.cos(rot)
+      });
+    }
+    /* curve through the midpoints so the outline has no visible corners */
+    var mid = function (a, b) { return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; };
+    var start = mid(pts[steps - 1], pts[0]);
+    ctx.beginPath();
+    ctx.moveTo(start.x, start.y);
+    for (var j = 0; j < steps; j++) {
+      var cur = pts[j], nxt = pts[(j + 1) % steps], m = mid(cur, nxt);
+      ctx.quadraticCurveTo(cur.x, cur.y, m.x, m.y);
     }
     ctx.closePath();
   }
@@ -173,17 +255,17 @@
     for (var i = 0; i < coat.patches.length; i++) {
       var p = coat.patches[i];
       blob(ctx, p.x, p.y, p.rx, p.ry, p.rot, seedBase + i * 977);
-      ctx.fillStyle = coat.dark;
+      ctx.fillStyle = p.color || coat.dark;
       ctx.fill();
       /* brindle inside the dark patches */
       if (coat.brindleStripes) {
         ctx.save();
         ctx.clip();
-        ctx.globalAlpha = 0.22;
+        ctx.globalAlpha = 0.16;
         ctx.strokeStyle = coat.brindle;
-        ctx.lineWidth = 1.3;
-        for (var s = 0; s < 10; s++) {
-          var x = p.x - p.rx + s * (p.rx * 2 / 9);
+        ctx.lineWidth = 1.1;
+        for (var s = 0; s < 7; s++) {
+          var x = p.x - p.rx + s * (p.rx * 2 / 6);
           ctx.beginPath();
           ctx.moveTo(x, p.y - p.ry - 4);
           ctx.quadraticCurveTo(x + 5, p.y, x - 1, p.y + p.ry + 4);
@@ -231,9 +313,9 @@
     /* muscle volume at the shoulder and thigh */
     [[region.cx, region.cy, region.chestR], [region.hx, region.hy, region.hipR]].forEach(function (m) {
       var rg = ctx.createRadialGradient(m[0] - m[2] * 0.3, m[1] - m[2] * 0.4, m[2] * 0.15, m[0], m[1], m[2] * 1.5);
-      rg.addColorStop(0, 'rgba(255,255,255,0.16)');
-      rg.addColorStop(0.55, 'rgba(255,255,255,0.03)');
-      rg.addColorStop(1, 'rgba(0,0,0,0.10)');
+      rg.addColorStop(0, 'rgba(255,255,255,0.13)');
+      rg.addColorStop(0.6, 'rgba(255,255,255,0.02)');
+      rg.addColorStop(1, 'rgba(255,255,255,0)');
       ctx.fillStyle = rg;
       ctx.beginPath();
       ctx.arc(m[0], m[1], m[2] * 1.5, 0, Math.PI * 2);
@@ -353,12 +435,24 @@
       }
       ctx.restore();
     }
-    if (coat.mask) {
+    if (coat.paleMuzzle) {
       ctx.save(); ctx.clip(headRegion);
-      ctx.fillStyle = coat.dark; ctx.globalAlpha = 0.9;
+      var pm = ctx.createRadialGradient(mzx, mzy, mzrx * 0.2, mzx - mzrx * 0.2, mzy, mzrx * 1.5);
+      pm.addColorStop(0, coat.paleMuzzle);
+      pm.addColorStop(0.55, coat.paleMuzzle);
+      pm.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = pm;
       ctx.beginPath();
-      ctx.ellipse(skull * 0.85 + muzzleL * 0.42, skull * 0.36, muzzleL * 0.66, muzzleD * 0.62, 0.05, 0, Math.PI * 2);
+      ctx.ellipse(mzx - mzrx * 0.05, mzy - mzry * 0.05, mzrx * 1.35, mzry * 1.5, 0.05, 0, Math.PI * 2);
       ctx.fill();
+      /* a greying senior muzzle: paler still around the lips and chin */
+      if (coat.greyMuzzle) {
+        ctx.globalAlpha = 0.55;
+        ctx.fillStyle = '#e9e4d9';
+        ctx.beginPath();
+        ctx.ellipse(mzx + mzrx * 0.15, mzy + mzry * 0.45, mzrx * 0.85, mzry * 0.55, 0.05, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.restore();
     }
 
@@ -390,6 +484,31 @@
       ctx.moveTo(mx + muzzleL * 0.3, my + muzzleD * 0.18);
       ctx.quadraticCurveTo(mx - muzzleL * 0.1, my + muzzleD * 0.4, mx - muzzleL * 0.45, my + muzzleD * 0.12);
       ctx.stroke();
+    }
+
+    /* a lolling tongue: hangs out when she pants, and now and then just because */
+    var loll = opts.tongue || 0;
+    if (loll > 0.02) {
+      var lx = mx + muzzleL * 0.12, ly = my + muzzleD * 0.42;
+      var lw = muzzleL * 0.3, ll = muzzleL * 0.85 * loll;
+      ctx.save();
+      ctx.fillStyle = '#e07f8d';
+      ctx.beginPath();
+      ctx.moveTo(lx - lw * 0.7, ly - muzzleD * 0.1);
+      ctx.quadraticCurveTo(lx - lw * 0.95, ly + ll * 0.65, lx - lw * 0.2, ly + ll);
+      ctx.quadraticCurveTo(lx + lw * 0.75, ly + ll * 1.05, lx + lw * 0.85, ly + ll * 0.45);
+      ctx.quadraticCurveTo(lx + lw * 0.95, ly + ll * 0.1, lx + lw * 0.6, ly - muzzleD * 0.14);
+      ctx.closePath();
+      ctx.fill();
+      /* centre crease */
+      ctx.strokeStyle = 'rgba(170,70,85,0.45)';
+      ctx.lineWidth = Math.max(0.7, lw * 0.14);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(lx + lw * 0.02, ly + ll * 0.15);
+      ctx.quadraticCurveTo(lx + lw * 0.1, ly + ll * 0.55, lx + lw * 0.16, ly + ll * 0.8);
+      ctx.stroke();
+      ctx.restore();
     }
 
     /* nose */
@@ -440,11 +559,24 @@
       ctx.restore();
     }
 
-    /* brow dots — the little tan spots above a brindle dog's eyes */
+    /* brows: pale dots on a dark head, dark shepherd arches on a light one */
     if (coat.headDark) {
       ctx.fillStyle = 'rgba(150,110,70,0.5)';
       ctx.beginPath(); ctx.ellipse(skull * 0.46, -skull * 0.36, 2.6, 1.9, 0, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.ellipse(skull * 0.02, -skull * 0.44, 2.3, 1.7, 0, 0, Math.PI * 2); ctx.fill();
+    } else if (coat.brows) {
+      ctx.save();
+      ctx.clip(headRegion);
+      ctx.fillStyle = coat.brows;
+      ctx.globalAlpha = 0.9;
+      ctx.beginPath();
+      ctx.ellipse(skull * 0.5, -skull * 0.42, skull * 0.24, skull * 0.1, -0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 0.72;
+      ctx.beginPath();
+      ctx.ellipse(skull * 0.02, -skull * 0.5, skull * 0.2, skull * 0.085, -0.18, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     }
 
     /* near ear on top */
@@ -458,8 +590,8 @@
     if (!kind || kind === 'none') return;
     var b = spec.build;
     /* sit the collar low on the neck, just ahead of the chest */
-    var nx = U.lerp(p.shX + 12, p.hdX - 10, 0.34);
-    var ny = U.lerp(p.shY - 2, p.hdY + 16, 0.34);
+    var nx = U.lerp(p.shX + 12, p.hdX - 10, 0.2);
+    var ny = U.lerp(p.shY - 2, p.hdY + 16, 0.2) + 3;
     var ang = Math.atan2(p.hdY + 14 - (p.shY - 2), p.hdX - 12 - (p.shX + 12));
     var rx = 11 * b.neck, ry = 5.5 * b.neck;
 
@@ -482,12 +614,32 @@
       ctx.strokeStyle = '#c8433f'; ctx.lineWidth = 4.5; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, -0.25, Math.PI + 0.25); ctx.stroke();
     } else if (kind === 'collar') {
-      ctx.strokeStyle = '#e2643c'; ctx.lineWidth = 4; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, -0.3, Math.PI + 0.3); ctx.stroke();
-      ctx.fillStyle = '#e8c25a';
-      ctx.beginPath(); ctx.arc(0, ry + 2, 2.6, 0, Math.PI * 2); ctx.fill();
+      var col = spec.coat.collarColor || '#e2643c';
+      ctx.lineWidth = 4.2;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = col;
+      ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
+      /* shade the far side so the band wraps rather than floats */
+      ctx.globalAlpha = 0.45;
+      ctx.strokeStyle = '#000';
+      ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, Math.PI + 0.15, Math.PI * 2 - 0.15); ctx.stroke();
+      ctx.globalAlpha = 1;
     }
     ctx.restore();
+
+    if (kind === 'collar') {
+      ctx.save();
+      ctx.translate(nx, ny);
+      ctx.strokeStyle = 'rgba(120,120,120,0.9)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(1, 6); ctx.lineTo(1, 9); ctx.stroke();
+      var tg = ctx.createLinearGradient(0, 8, 0, 14);
+      tg.addColorStop(0, '#f2d271');
+      tg.addColorStop(1, '#c9a23c');
+      ctx.fillStyle = tg;
+      ctx.beginPath(); ctx.arc(1, 11.5, 2.8, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
 
     if (kind === 'bandana') {
       ctx.save();
@@ -534,8 +686,8 @@
     ctx.globalAlpha = 0.95;
     legPath(ctx, legs.rearFar, coat.base, thick, coat.baseShade);
     legPath(ctx, legs.frontFar, coat.base, thick, coat.baseShade);
-    paw(ctx, legs.rearFar.px, legs.rearFar.py, thick * 0.72, coat.darkShade, false);
-    paw(ctx, legs.frontFar.px, legs.frontFar.py, thick * 0.72, coat.darkShade, false);
+    paw(ctx, legs.rearFar.px, legs.rearFar.py, thick * 0.72, coat.baseShade, false);
+    paw(ctx, legs.frontFar.px, legs.frontFar.py, thick * 0.72, coat.baseShade, false);
     ctx.restore();
 
     ctx.save();
@@ -544,38 +696,49 @@
     legPath(ctx, legs.frontNear, coat.base, thick, coat.base);
     drawLegTicks(ctx, spec, legs.rearNear);
     drawLegTicks(ctx, spec, legs.frontNear);
-    paw(ctx, legs.rearNear.px, legs.rearNear.py, thick * 0.78, coat.paw, true);
-    paw(ctx, legs.frontNear.px, legs.frontNear.py, thick * 0.78, coat.paw, true);
+    paw(ctx, legs.rearNear.px, legs.rearNear.py, thick * 0.78, coat.paw, true, coat.nail);
+    paw(ctx, legs.frontNear.px, legs.frontNear.py, thick * 0.78, coat.paw, true, coat.nail);
     ctx.restore();
 
     /* --- tail --- */
     drawTail(ctx, spec, p, d, t);
 
-    /* --- torso --- */
-    ctx.save();
-    ctx.translate(0, breath * 0.4);
-    paintCoat(ctx, spec, region, d.rec.seed);
-    paintPatches(ctx, spec, region, d.rec.seed);
-    paintSpeckles(ctx, spec, region);
-    paintDirt(ctx, spec, region, 1 - (d.rec.needs ? d.rec.needs.clean : 1), d.rec.seed);
-    paintShading(ctx, region);
-    ctx.restore();
-
     /* --- neck --- */
     var nb = { x: p.shX + 6, y: p.shY - 2 };
     var neckW = 11 * build.neck;
-    tapered(ctx, nb.x, nb.y + 6, p.hdX - 12, p.hdY + 12, neckW, neckW * 0.85, coat.headDark ? coat.dark : coat.base);
-    if (coat.chestWhite && coat.headDark) {
+    var nEnd = { x: p.hdX - 12, y: p.hdY + 12 };
+    limb(ctx,
+      [{ x: nb.x - 4, y: nb.y + 12 },
+       { x: U.lerp(nb.x, nEnd.x, 0.5), y: U.lerp(nb.y + 6, nEnd.y, 0.5) },
+       nEnd],
+      [neckW * 1.15, neckW, neckW * 0.9],
+      coat.headDark ? coat.dark : coat.base);
+    if (coat.chestWhite) {
       ctx.save();
-      ctx.globalAlpha = 0.9;
-      ctx.fillStyle = coat.base;
+      var bg = ctx.createRadialGradient(nb.x + 5, nb.y + 20, 1, nb.x + 5, nb.y + 20, 13);
+      var bibCol = coat.bib || coat.base;
+      bg.addColorStop(0, bibCol);
+      bg.addColorStop(0.55, bibCol);
+      bg.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = bg;
       ctx.beginPath();
-      ctx.ellipse(nb.x + 3, nb.y + 20, 7, 9, -0.3, 0, Math.PI * 2);
+      ctx.ellipse(nb.x + 5, nb.y + 20, 7.5, 13, -0.2, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
 
-    drawHead(ctx, spec, p, t, { blink: d.blink, earFlap: d.earFlap });
+    /* --- torso --- */
+    ctx.save();
+    ctx.translate(0, breath * 0.4);
+    paintCoat(ctx, spec, region, d.rec.seed);
+    paintSpeckles(ctx, spec, region);
+    paintPatches(ctx, spec, region, d.rec.seed);
+    paintDirt(ctx, spec, region, 1 - (d.rec.needs ? d.rec.needs.clean : 1), d.rec.seed);
+    paintShading(ctx, region);
+    ctx.restore();
+
+    drawHead(ctx, spec, p, t, { blink: d.blink, earFlap: d.earFlap, tongue: d.tongue });
     drawAccessory(ctx, spec, p, d.rec.accessory);
 
     ctx.restore();
@@ -626,7 +789,6 @@
     var wag = (d.wag || 0) * Math.sin(t * (7 + (d.wag || 0) * 7));
     var up = p.tailUp || 0;
 
-    /* base angle: pointing back and slightly down when relaxed, up when excited */
     var ang = Math.PI - 0.5 + up * 1.05 + wag * 0.30 - p.tailBase * 0.12;
     var pts = [{ x: base.x, y: base.y }];
     var x = base.x, y = base.y;
@@ -637,11 +799,22 @@
       y = Math.min(y + Math.sin(ang) * seg, -2);
       pts.push({ x: x, y: y });
     }
-    var w = 4.2 / b.tailThin;
-    for (var j = 0; j < pts.length - 1; j++) {
-      var w1 = w * (1 - j * 0.19), w2 = w * (1 - (j + 1) * 0.19);
-      var tip = coat.tailTipWhite && j >= pts.length - 2;
-      tapered(ctx, pts[j].x, pts[j].y, pts[j + 1].x, pts[j + 1].y, w1, w2, tip ? coat.base : coat.dark);
+
+    var w = 4.4 / b.tailThin;
+    var path = limbPath(pts, [w * 1.1, w * 0.86, w * 0.66, w * 0.5, w * 0.42]);
+    ctx.fillStyle = coat.dark;
+    ctx.fill(path);
+
+    if (coat.tailTipWhite) {
+      ctx.save();
+      ctx.clip(path);
+      var tip = pts[pts.length - 1], prev = pts[pts.length - 2];
+      ctx.fillStyle = coat.base;
+      ctx.beginPath();
+      ctx.ellipse(U.lerp(prev.x, tip.x, 0.75), U.lerp(prev.y, tip.y, 0.75),
+                  len * coat.tailTipWhite * 0.4, len * coat.tailTipWhite * 0.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     }
   }
 
@@ -664,6 +837,6 @@
     blankPose: blankPose,
     drawDog: drawDog,
     drawPortrait: drawPortrait,
-    tapered: tapered
+    limb: limb
   };
 })(window);

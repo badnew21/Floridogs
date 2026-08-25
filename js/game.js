@@ -151,6 +151,7 @@
       poseName: 'stand',
       blink: 0, blinkTimer: U.rand(1, 4),
       wag: 0.2, earFlap: 0, hop: 0, roll: 0, tilt: 0,
+      tongue: 0, lolling: false, lollTimer: 3,
       panting: false,
       gaitPhase: 0, gaitAmp: 0, gaitSpeed: 1, running: false,
       vx: 0, vy: 0,
@@ -499,6 +500,21 @@
       d.pose.hdRot += 0.05;
     }
     d.panting = d.running || d.behavior === 'happy' || n.thirst < 0.3;
+
+    /* Tongue out: always while panting, and otherwise now and then, which is
+       how Cherry looks in most photographs of her. */
+    d.lollTimer -= dt;
+    if (d.lollTimer <= 0) {
+      var canLoll = n.mood > 0.3 && d.behavior !== 'sleep' && d.behavior !== 'eat' && d.behavior !== 'drink';
+      d.lolling = !d.lolling && canLoll;
+      d.lollTimer = d.lolling ? U.rand(2.5, 7) : U.rand(3, 11);
+    }
+    var tongueWant = 0;
+    if (d.behavior === 'sleep' || d.behavior === 'eat' || d.behavior === 'drink') tongueWant = 0;
+    else if (d.panting) tongueWant = 0.85;
+    else if (d.behavior === 'playbow' || d.behavior === 'happy') tongueWant = 0.7;
+    else if (d.lolling) tongueWant = 0.55;
+    d.tongue = U.approach(d.tongue, tongueWant, 0.09, dt);
     d.scale = depthScale(d);
     d.bubbles = U.approach(d.bubbles, 0, 0.02, dt);
   }
