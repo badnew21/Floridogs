@@ -77,7 +77,7 @@
         skull: 1.05,
         muzzleLen: 1.15,
         muzzleDepth: 0.95,
-        earLen: 1.3,
+        earLen: 1.12,
         earType: 'drop',
         tailLen: 1.1,
         tailThin: 1.15

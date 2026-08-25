@@ -380,11 +380,14 @@
   /* ------------------------------------------------------- bottom screen -- */
   UI.drawBottom = function (ctx, t) {
     beginFrame();
-    if (UI.screen === 'title') return drawTitleBottom(ctx, t);
-    if (UI.screen === 'adopt') return drawAdopt(ctx, t);
-    if (G.mode === 'walk') return drawWalk(ctx, t);
-    if (G.mode === 'contest') return drawContest(ctx, t);
-    return drawHome(ctx, t);
+    if (UI.screen === 'title') drawTitleBottom(ctx, t);
+    else if (UI.screen === 'adopt') drawAdopt(ctx, t);
+    else if (G.mode === 'walk') drawWalk(ctx, t);
+    else if (G.mode === 'contest') drawContest(ctx, t);
+    else drawHome(ctx, t);
+    /* overlays and toasts belong to every screen, including the title */
+    if (UI.overlay) drawOverlay(ctx, t);
+    drawToast(ctx);
   };
 
   function drawTitleBottom(ctx, t) {
@@ -449,6 +452,23 @@
     UI.buttons.push({ id: 'bowl:food', x: G.foodBowl.x - 16, y: G.foodBowl.y - 14, w: 32, h: 24 });
     UI.buttons.push({ id: 'bowl:water', x: G.waterBowl.x - 16, y: G.waterBowl.y - 14, w: 32, h: 24 });
 
+    /* a present waiting to be opened */
+    if (G.gift) {
+      var bob = Math.sin(G.gift.t * 3) * 2;
+      ctx.save();
+      U.shadow(ctx, G.gift.x, G.gift.y + 8, 12, 4, 0.18);
+      ctx.fillStyle = '#e0574f';
+      U.roundRect(ctx, G.gift.x - 11, G.gift.y - 12 + bob, 22, 18, 3); ctx.fill();
+      ctx.fillStyle = '#f5d76e';
+      ctx.fillRect(G.gift.x - 2, G.gift.y - 12 + bob, 4, 18);
+      ctx.fillRect(G.gift.x - 11, G.gift.y - 5 + bob, 22, 4);
+      ctx.fillStyle = '#f5d76e';
+      ctx.beginPath(); ctx.arc(G.gift.x - 4, G.gift.y - 14 + bob, 3.4, 0, Math.PI * 2);
+      ctx.arc(G.gift.x + 4, G.gift.y - 14 + bob, 3.4, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      UI.buttons.push({ id: 'gift', x: G.gift.x - 16, y: G.gift.y - 22, w: 32, h: 32 });
+    }
+
     /* the other dog naps in the background if you own both */
     var other = G.other();
     if (other) {
@@ -489,8 +509,6 @@
 
     drawTray(ctx);
     drawHint(ctx);
-    if (UI.overlay) drawOverlay(ctx, t);
-    drawToast(ctx);
   }
 
   function hearts(d) {
@@ -629,8 +647,6 @@
       128, 50, { size: 9, align: 'center', color: '#3d4a57', outline: 'rgba(255,255,255,0.9)', outlineWidth: 4 });
 
     drawTray(ctx);
-    if (UI.overlay) drawOverlay(ctx, t);
-    drawToast(ctx);
   }
 
   /* ------------------------------------------------------------- contest */
@@ -658,8 +674,6 @@
       U.text(ctx, '+' + c.lastScore, c.lastScoreX, c.lastScoreY, { size: 16, align: 'center', color: '#fff', outline: '#2f4a2a', outlineWidth: 4, weight: 'bold' });
       ctx.restore();
     }
-    if (UI.overlay) drawOverlay(ctx, t);
-    drawToast(ctx);
   }
 
   /* -------------------------------------------------------------- overlay */

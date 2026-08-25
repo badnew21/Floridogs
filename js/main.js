@@ -298,6 +298,7 @@
       case 'call': if (d) G.call(d, true); return;
       case 'tricks': UI.trickPanel = !UI.trickPanel; return;
 
+      case 'gift': G.openGift(); return;
       case 'bowl:food': G.putFood(); return;
       case 'bowl:water': G.putWater(); return;
 
@@ -464,7 +465,9 @@
       var near = Math.abs(d.x - dz.x) < 26;
       var catchable = dz.z > 8 && dz.z < 70 * d.spec.build.scale + 26;
       if (!dz.caught && near && catchable) {
-        var skill = 0.45 + d.rec.bond * 0.3 + d.rec.needs.energy * 0.25;
+        /* condition matters: a tired, scruffy or sulky dog drops catches */
+        var n = d.rec.needs;
+        var skill = (0.42 + d.rec.bond * 0.3 + n.energy * 0.24) * (0.72 + n.clean * 0.16 + n.mood * 0.16);
         if (Math.random() < skill) {
           dz.caught = true;
           var dist = Math.max(0, dz.x - dz.startX);

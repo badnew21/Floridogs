@@ -38,7 +38,9 @@
     coins: 0,
     inventory: { food: 6, water: 6, treats: 3, shampoo: 2 },
     bowls: { food: 0, water: 0 },
-    lastTick: Date.now()
+    lastTick: Date.now(),
+    gift: null,
+    giftTimer: 90
   };
 
   /* ------------------------------------------------------------ persistence */
@@ -728,6 +730,7 @@
       d.earFlap = U.approach(d.earFlap, 0, 0.05, dt);
 
       if (i === G.active && G.mode === 'home') updateBehavior(d, dt);
+      else if (i !== G.active) updateIdleDog(d, dt);
       updatePose(d, dt);
     });
 
@@ -745,9 +748,54 @@
 
     if (G.pendingTrick && Date.now() > G.pendingTrick.until) G.pendingTrick = null;
 
+    /* every so often a present turns up on the floor */
+    if (G.mode === 'home' && !G.gift) {
+      G.giftTimer -= dt;
+      if (G.giftTimer <= 0) {
+        G.giftTimer = U.rand(150, 320);
+        G.gift = { x: U.rand(44, 210), y: U.rand(116, 150), t: 0 };
+        G.say('A present arrived! Tap it to open.', 'good');
+        Audio.chime(true);
+      }
+    }
+    if (G.gift) G.gift.t += dt;
+
     G.autosaveTimer = (G.autosaveTimer || 0) + dt;
     if (G.autosaveTimer > 12) { G.autosaveTimer = 0; G.persist(); }
   };
+
+  G.openGift = function () {
+    if (!G.gift) return;
+    G.gift = null;
+    var roll = Math.random();
+    if (roll < 0.35) {
+      var c = U.randInt(8, 24);
+      G.coins += c;
+      G.say('The present had ' + c + ' coins inside!', 'good');
+    } else if (roll < 0.62) {
+      G.inventory.treats += 3;
+      G.say('A box of treats!', 'good');
+    } else if (roll < 0.82) {
+      G.inventory.food += 2; G.inventory.water += 2;
+      G.say('Food and water — someone is looking out for you.', 'good');
+    } else {
+      G.inventory.shampoo += 2;
+      G.say('Two bottles of shampoo.', 'good');
+    }
+    var d = G.dog();
+    if (d) { G.emote(d, 'star'); setBehavior(d, 'happy', 1.4); }
+    Audio.chime(true);
+    G.persist();
+  };
+
+  /* the dog you are not playing with still naps, sits and shifts around */
+  function updateIdleDog(d, dt) {
+    d.btimer -= dt;
+    if (d.btimer > 0) return;
+    var n = d.rec.needs;
+    if (n.energy < 0.4 || G.hour > 22 || G.hour < 6.5) setBehavior(d, 'sleep', U.rand(20, 60));
+    else setBehavior(d, U.pick(['sit', 'down', 'idle', 'sit']), U.rand(6, 18));
+  }
 
   /* fixed props in the living room */
   G.foodBowl = { x: 200, y: 146 };

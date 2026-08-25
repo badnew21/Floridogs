@@ -131,19 +131,12 @@
     path.quadraticCurveTo(neckTop.x + 12, neckTop.y + 12, neckTop.x, neckTop.y);
     path.closePath();
 
-    /* shoulder and thigh mass — separate subpaths, each opened with a moveTo
-       so the nonzero fill unions them instead of punching holes */
+    /* shoulder and thigh are shaded inside the silhouette rather than bulging
+       out of it — a hard ellipse edge against a dark patch looks synthetic */
     var shR = 15 * chest, shH = 19 * chest;
     var thR = 17, thH = 21;
-
     var scx = shX - 4, scy = Math.min(shY + depth * 0.42, -16);
     var tcx = hipX - 4, tcy = Math.min(hipY + depth * 0.4, -16);
-    shH = Math.min(shH, Math.max(8, -6 - scy));
-    thH = Math.min(thH, Math.max(8, -6 - tcy));
-    path.moveTo(scx + shR, scy);
-    path.ellipse(scx, scy, shR, shH, 0, 0, Math.PI * 2);
-    path.moveTo(tcx + thR, tcy);
-    path.ellipse(tcx, tcy, thR, thH, 0, 0, Math.PI * 2);
 
     return { path: path, cx: scx, cy: scy, hx: tcx, hy: tcy,
              chestR: shR, chestH: shH, hipR: thR, hipH: thH,
@@ -235,6 +228,17 @@
   function paintShading(ctx, region) {
     ctx.save();
     ctx.clip(region.path);
+    /* muscle volume at the shoulder and thigh */
+    [[region.cx, region.cy, region.chestR], [region.hx, region.hy, region.hipR]].forEach(function (m) {
+      var rg = ctx.createRadialGradient(m[0] - m[2] * 0.3, m[1] - m[2] * 0.4, m[2] * 0.15, m[0], m[1], m[2] * 1.5);
+      rg.addColorStop(0, 'rgba(255,255,255,0.16)');
+      rg.addColorStop(0.55, 'rgba(255,255,255,0.03)');
+      rg.addColorStop(1, 'rgba(0,0,0,0.10)');
+      ctx.fillStyle = rg;
+      ctx.beginPath();
+      ctx.arc(m[0], m[1], m[2] * 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    });
     var g = ctx.createLinearGradient(0, region.top, 0, region.bottom + 6);
     g.addColorStop(0, 'rgba(255,255,255,0.20)');
     g.addColorStop(0.45, 'rgba(255,255,255,0.0)');
@@ -342,7 +346,7 @@
       ctx.save(); ctx.clip(headRegion);
       ctx.fillStyle = coat.dark; ctx.globalAlpha = 0.9;
       ctx.beginPath();
-      ctx.ellipse(skull * 0.75 + muzzleL * 0.4, skull * 0.34, muzzleL * 0.8, muzzleD * 0.85, 0.05, 0, Math.PI * 2);
+      ctx.ellipse(skull * 0.85 + muzzleL * 0.42, skull * 0.36, muzzleL * 0.66, muzzleD * 0.62, 0.05, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
@@ -464,13 +468,8 @@
         ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI * 2); ctx.fill();
       }
     } else if (kind === 'bandana') {
-      ctx.fillStyle = '#c8433f';
-      ctx.beginPath();
-      ctx.moveTo(-rx, -2); ctx.quadraticCurveTo(0, ry * 2.4, rx, -2);
-      ctx.quadraticCurveTo(0, ry * 0.8, -rx, -2);
-      ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#a8332f';
-      ctx.beginPath(); ctx.moveTo(-3, ry); ctx.lineTo(2, ry * 3.4); ctx.lineTo(7, ry * 0.9); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#c8433f'; ctx.lineWidth = 4.5; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, -0.25, Math.PI + 0.25); ctx.stroke();
     } else if (kind === 'collar') {
       ctx.strokeStyle = '#e2643c'; ctx.lineWidth = 4; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, -0.3, Math.PI + 0.3); ctx.stroke();
@@ -478,6 +477,20 @@
       ctx.beginPath(); ctx.arc(0, ry + 2, 2.6, 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
+
+    if (kind === 'bandana') {
+      ctx.save();
+      ctx.translate(nx, ny);
+      ctx.fillStyle = '#b93b37';
+      ctx.beginPath();
+      ctx.moveTo(-6, 1); ctx.lineTo(6, 1);
+      ctx.quadraticCurveTo(3, 14, 0, 17);
+      ctx.quadraticCurveTo(-3, 14, -6, 1);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#d24b45';
+      ctx.beginPath(); ctx.ellipse(0, 2, 5, 3.4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
   }
 
   /* ------------------------------------------------------------------- dog -- */
@@ -592,9 +605,9 @@
 
     return {
       frontNear: leg(p.shX, p.shY + 4, p.fpX, p.fpY, ph + offs[0], true),
-      frontFar:  leg(p.shX - 3, p.shY + 5, p.fpX - 5, p.fpY, ph + offs[1], true),
+      frontFar:  leg(p.shX - 3, p.shY + 14, p.fpX - 5, p.fpY, ph + offs[1], true),
       rearNear:  leg(p.hipX, p.hipY + 4, p.rpX, p.rpY, ph + offs[2], false),
-      rearFar:   leg(p.hipX - 3, p.hipY + 5, p.rpX - 5, p.rpY, ph + offs[3], false)
+      rearFar:   leg(p.hipX - 3, p.hipY + 14, p.rpX - 5, p.rpY, ph + offs[3], false)
     };
   }
 
