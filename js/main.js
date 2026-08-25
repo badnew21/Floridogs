@@ -420,7 +420,7 @@
     var speed = Math.sqrt(IN.vx * IN.vx + IN.vy * IN.vy);
     if (speed < 30) return;
     c.disc = {
-      x: d.x + 14, y: d.y, z: 24,
+      x: d.x + 14, y: d.y, z: 26,
       vx: U.clamp(IN.vx * 1.15, 30, 340),
       vy: U.clamp(IN.vy * 0.3, -40, 40),
       vz: U.clamp(-IN.vy * 0.55, 20, 190),
@@ -449,7 +449,7 @@
       dz.z += dz.vz * dt;
       dz.spin += dt * 14;
       if (dz.x > 248) { dz.vx *= -0.3; dz.x = 248; }
-      dz.y = U.clamp(dz.y, 96, 182);
+      dz.y = U.clamp(dz.y, 124, 178);
 
       /* the dog runs to the disc and leaps for it */
       var targetX = dz.x + 6;
@@ -497,11 +497,11 @@
       }
     } else {
       /* trot back to the throwing line */
-      var homeX = 60;
+      var homeX = 52;
       if (Math.abs(d.x - homeX) > 3) {
         d.facing = homeX > d.x ? 1 : -1;
         d.x += Math.sign(homeX - d.x) * Math.min(120 * dt, Math.abs(homeX - d.x));
-        d.y = U.approach(d.y, 150, 0.06, dt);
+        d.y = U.approach(d.y, 158, 0.06, dt);
         d.gaitAmp = 1; d.gaitPhase += dt * 4.5; d.running = true;
         d.behavior = 'fetchBack';
       } else {
@@ -511,7 +511,7 @@
         d.behavior = 'alert';
       }
     }
-    d.scale = U.clamp(0.78 + (d.y - 104) / 80 * 0.36, 0.7, 1.2);
+    d.scale = U.clamp(0.74 + (d.y - 120) / 58 * 0.3, 0.7, 1.12);
   }
 
   function resetDogToLine(d) { d.behavior = 'fetchBack'; }

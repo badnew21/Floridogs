@@ -28,7 +28,6 @@
     messages: [],
     emotes: [],
     toys: [],
-    pickups: [],
     clock: 0,            /* minutes since midnight, follows the real clock */
     day: 1,
     hour: 12,
@@ -38,7 +37,6 @@
     coins: 0,
     inventory: { food: 6, water: 6, treats: 3, shampoo: 2 },
     bowls: { food: 0, water: 0 },
-    lastTick: Date.now(),
     gift: null,
     giftTimer: 90
   };
@@ -164,7 +162,6 @@
       actionLock: 0,
       trickCue: null,
       lastBark: 0,
-      dirtiness: 0,
       bubbles: 0
     };
   }
@@ -687,7 +684,7 @@
     if (d.rec.needs.energy < 0.2) { G.say(d.rec.name + ' needs a nap before competing.', 'warn'); return; }
     G.mode = 'contest';
     G.contest = { time: 60, score: 0, throws: 0, catches: 0, best: 0, disc: null, state: 'ready', combo: 0 };
-    d.x = 60; d.y = 150; d.facing = 1;
+    d.x = 52; d.y = 158; d.facing = 1;
     setBehavior(d, 'alertWait', 999);
     G.say('Disc competition! Swipe to throw, ' + d.rec.name + ' will run it down.');
   };

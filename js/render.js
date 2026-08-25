@@ -570,9 +570,6 @@
     ctx.restore();
   }
 
-  function mixDark(c) { return c; }
-  function shadeOf(coat, d, leg, far) { return far ? coat.baseShade : coat.base; }
-
   function drawLegTicks(ctx, spec, leg) {
     if (!spec.legTicks.length) return;
     ctx.save();

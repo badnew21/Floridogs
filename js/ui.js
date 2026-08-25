@@ -230,7 +230,9 @@
     ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
 
     /* camera: a gentle push-in that follows her around the room */
-    var camX = U.clamp(d.x, 100, 156), Z = 1.34;
+    var camX = U.clamp(d.x, 100, 156);
+    var Z = G.mode === 'contest' ? 1.0 : G.mode === 'walk' ? 1.15 : 1.34;
+    if (G.mode === 'contest') camX = 128;
     ctx.translate(128, 128);
     ctx.scale(Z, Z);
     ctx.translate(-camX, -132);
@@ -287,10 +289,10 @@
       ctx.restore();
     } else if (G.mode === 'contest' && G.contest) {
       ctx.save();
-      U.roundRect(ctx, 60, 132, 136, 22, 11);
-      ctx.fillStyle = 'rgba(255,255,255,0.88)'; ctx.fill();
-      U.text(ctx, 'Score ' + G.contest.score, 72, 148, { size: 12, color: '#3f3527', weight: 'bold' });
-      U.text(ctx, Math.ceil(G.contest.time) + 's', 186, 148, { size: 12, align: 'right', color: G.contest.time < 10 ? '#d33' : '#3f3527', weight: 'bold' });
+      U.roundRect(ctx, 148, 30, 100, 20, 10);
+      ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fill();
+      U.text(ctx, 'Score ' + G.contest.score, 157, 44, { size: 11, color: '#3f3527', weight: 'bold' });
+      U.text(ctx, Math.ceil(G.contest.time) + 's', 240, 44, { size: 11, align: 'right', color: G.contest.time < 10 ? '#d33' : '#3f3527', weight: 'bold' });
       ctx.restore();
     }
 
@@ -666,7 +668,7 @@
     chip(ctx, 6, 22, Math.ceil(c.time) + 's left');
     btn(ctx, 'contest:quit', W - 60, 6, 54, 20, 'Finish', { size: 9 });
     if (c.state === 'ready') {
-      U.text(ctx, 'Swipe to throw the disc', 128, 172, { size: 11, align: 'center', color: '#2f4a2a', outline: 'rgba(255,255,255,0.9)', outlineWidth: 4, weight: 'bold' });
+      U.text(ctx, 'Swipe to throw the disc  →', 128, 182, { size: 11, align: 'center', color: '#2f4a2a', outline: 'rgba(255,255,255,0.9)', outlineWidth: 4, weight: 'bold' });
     }
     if (c.lastScore && c.lastScoreLife > 0) {
       ctx.save();
@@ -709,11 +711,11 @@
         ['buy:collar', 'Orange collar', 25]
       ];
       for (var s = 0; s < stock.length; s++) {
-        var y = 38 + s * 19;
-        btn(ctx, stock[s][0], 26, y, 150, 17, stock[s][1], { size: 9 });
+        var y = 34 + s * 18;
+        btn(ctx, stock[s][0], 26, y, 150, 16, stock[s][1], { size: 9 });
         U.text(ctx, stock[s][2] + 'c', 216, y + 12, { size: 9, align: 'right', color: G.coins >= stock[s][2] ? '#3f7a3a' : '#b04b3c', weight: 'bold' });
       }
-      btn(ctx, 'shop:close', 100, 174, 56, 16, 'Close', { size: 9 });
+      btn(ctx, 'shop:close', 100, 162, 56, 16, 'Close', { size: 9 });
     } else if (UI.overlay === 'care') {
       var d = G.dog();
       panel(ctx, 16, 14, 224, 164, d ? d.rec.name + "'s Record" : 'Record');
@@ -734,15 +736,15 @@
           U.text(ctx, rows[r][1], rx + 94, ry, { size: 8, align: 'right', color: '#3f3527', weight: 'bold' });
         }
         var nn = d.rec.needs;
-        needBar(ctx, 28, 96, 200, 'Food', nn.hunger, '#e0913c');
-        needBar(ctx, 28, 108, 200, 'Water', nn.thirst, '#4ba3d8');
-        needBar(ctx, 28, 120, 200, 'Mood', nn.mood, '#e2688f');
-        needBar(ctx, 28, 132, 200, 'Clean', nn.clean, '#7fc26a');
-        needBar(ctx, 28, 144, 200, 'Energy', nn.energy, '#b184d4');
-        btn(ctx, 'care:rename', 28, 158, 84, 16, 'Rename', { size: 9 });
-        btn(ctx, 'care:accessory', 120, 158, 108, 16, 'Accessory: ' + (d.rec.accessory || 'none'), { size: 8 });
+        needBar(ctx, 28, 90, 200, 'Food', nn.hunger, '#e0913c');
+        needBar(ctx, 28, 101, 200, 'Water', nn.thirst, '#4ba3d8');
+        needBar(ctx, 28, 112, 200, 'Mood', nn.mood, '#e2688f');
+        needBar(ctx, 28, 123, 200, 'Clean', nn.clean, '#7fc26a');
+        needBar(ctx, 28, 134, 200, 'Energy', nn.energy, '#b184d4');
+        btn(ctx, 'care:rename', 28, 148, 84, 16, 'Rename', { size: 9 });
+        btn(ctx, 'care:accessory', 120, 148, 108, 16, 'Accessory: ' + (d.rec.accessory || 'none'), { size: 8 });
       }
-      btn(ctx, 'care:close', 108, 176, 40, 14, 'Close', { size: 8 });
+      btn(ctx, 'care:close', 100, 168, 56, 16, 'Close', { size: 9 });
     } else if (UI.overlay === 'kennel') {
       panel(ctx, 16, 14, 224, 164, 'Kennel');
       for (var k = 0; k < G.dogs.length; k++) {

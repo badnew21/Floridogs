@@ -61,8 +61,15 @@ the game is closed (capped at 14 hours, so a week away won't ruin anything).
 She sleeps at night and wakes up rested. Hearts grow through feeding, petting,
 play, walks and training. The game autosaves to `localStorage`.
 
-Walks earn coins and presents. The disc competition pays out by score. Coins
-buy food, treats, shampoo and accessories in the shop.
+She gets visibly dirty as Clean drops, and shakes herself off the moment a
+bath finishes. Presents turn up in the room from time to time — tap to open.
+Walks earn coins and finds along the route, and the disc competition pays out
+by score; catching depends on energy, grooming and mood, so a well-kept dog
+competes better. Coins buy food, treats, shampoo and accessories in the shop.
+
+You can keep both dogs. Adopt the second from **Menu → Kennel**, switch between
+them there, and the one you're not playing with pads around, sits and naps in
+the background.
 
 ## The dogs
 

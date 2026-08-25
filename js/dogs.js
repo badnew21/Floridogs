@@ -149,7 +149,6 @@
         bond: 0.15,
         hearts: 1,
         tricks: { sit: 0, down: 0, shake: 0, rollover: 0, speak: 0, jump: 0 },
-        trickNames: {},
         stats: { walks: 0, contests: 0, discBest: 0, pets: 0, meals: 0, days: 0 },
         accessory: b.accessory,
         lastSeen: Date.now()
