@@ -1,0 +1,85 @@
+/* Floridogs — Nintendo DS style shell, mobile first */
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  margin: 0; padding: 0; height: 100%; overflow: hidden;
+  background: #14161b;
+  font-family: "Trebuchet MS", "Segoe UI", system-ui, -apple-system, sans-serif;
+  color: #eef2f7;
+  overscroll-behavior: none;
+  touch-action: none;
+  user-select: none; -webkit-user-select: none;
+}
+
+.ds {
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 0.5vh;
+  padding: max(6px, env(safe-area-inset-top)) 6px max(6px, env(safe-area-inset-bottom));
+  background:
+    radial-gradient(120% 80% at 50% 0%, #333a46 0%, #20242c 55%, #14161b 100%);
+}
+
+.screen-wrap { display: flex; flex-direction: column; align-items: center; width: 100%; }
+
+/* The bezel keeps the authentic 4:3 DS screen ratio and scales to fit. */
+.screen-bezel {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  width: min(100%, calc((44vh) * 4 / 3));
+  max-height: 44vh;
+  background: #0b0d10;
+  border-radius: 6px;
+  padding: 5px;
+  box-shadow:
+    0 0 0 2px #454c58,
+    0 6px 18px rgba(0,0,0,.55),
+    inset 0 0 12px rgba(0,0,0,.9);
+}
+.screen-bezel.touch { box-shadow: 0 0 0 2px #545c6b, 0 6px 18px rgba(0,0,0,.55), inset 0 0 12px rgba(0,0,0,.9); }
+
+canvas {
+  display: block; width: 100%; height: 100%;
+  border-radius: 3px;
+  background: #cfe6f5;
+  image-rendering: auto;
+}
+
+.ds-hinge { display: flex; gap: 26px; padding: 2px 0 3px; opacity: .5; }
+.hinge-dot { width: 5px; height: 5px; border-radius: 50%; background: #6c7686; }
+
+.ds-brand {
+  font-size: 9px; letter-spacing: 2px; color: #7d8697; margin-top: 3px; font-weight: bold;
+}
+.ds-brand-sub { color: #e05b5b; margin-left: 4px; letter-spacing: 1px; }
+
+.ds-controls { display: flex; gap: 10px; align-items: center; margin-top: 4px; }
+.ds-btn {
+  min-width: 40px; height: 30px; border-radius: 15px;
+  border: 1px solid #5b6474; background: linear-gradient(#4b5364, #333a46);
+  color: #e7ecf3; font-size: 14px; font-family: inherit; font-weight: bold;
+  box-shadow: 0 2px 0 #22262e; cursor: pointer;
+}
+.ds-btn.wide { min-width: 78px; font-size: 11px; letter-spacing: 1px; }
+.ds-btn:active { transform: translateY(2px); box-shadow: none; }
+.ds-btn.off { opacity: .42; }
+.ds-btn.rec { background: linear-gradient(#7a3a3a, #5a2626); border-color: #a05656; }
+
+#rotate-hint {
+  display: none; position: fixed; left: 0; right: 0; bottom: 6px;
+  text-align: center; font-size: 11px; color: #8b94a4;
+}
+
+/* Landscape phones / wide screens: put the two DS screens side by side. */
+@media (orientation: landscape) and (max-height: 560px) {
+  .ds { flex-direction: row; gap: 10px; flex-wrap: wrap; }
+  .ds-hinge { display: none; }
+  .screen-wrap { width: auto; }
+  .screen-bezel { max-height: 84vh; width: auto; height: 84vh; }
+  .ds-controls { flex-direction: column; }
+  .ds-brand { display: none; }
+}
+
+/* Desktop: keep the handheld feel but bigger. */
+@media (min-width: 900px) and (orientation: landscape) {
+  .screen-bezel { max-height: 42vh; height: 42vh; width: auto; }
+}

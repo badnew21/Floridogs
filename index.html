@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2b2f38">
+<title>Floridogs</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="ds" class="ds">
+  <div class="ds-hinge"><span class="hinge-dot"></span><span class="hinge-dot"></span><span class="hinge-dot"></span></div>
+
+  <div class="screen-wrap top-wrap">
+    <div class="screen-bezel">
+      <canvas id="topScreen" width="512" height="384" aria-label="Status screen"></canvas>
+    </div>
+  </div>
+
+  <div class="screen-wrap bottom-wrap">
+    <div class="screen-bezel touch">
+      <canvas id="btmScreen" width="512" height="384" aria-label="Touch screen" role="application"></canvas>
+    </div>
+    <div class="ds-brand">FLORIDOGS<span class="ds-brand-sub">DS</span></div>
+  </div>
+
+  <div class="ds-controls">
+    <button class="ds-btn" id="btnSound" title="Sound">&#9834;</button>
+    <button class="ds-btn" id="btnMic" title="Microphone">&#127908;</button>
+    <button class="ds-btn wide" id="btnStart" title="Menu">START</button>
+  </div>
+</div>
+
+<div id="rotate-hint">Turn your device upright for the best fit.</div>
+
+<script src="js/util.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/dogs.js"></script>
+<script src="js/render.js"></script>
+<script src="js/scenes.js"></script>
+<script src="js/game.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
