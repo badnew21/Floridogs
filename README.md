@@ -4,8 +4,12 @@ A Nintendogs-style puppy sim built as a Nintendo DS on your phone: two stacked
 screens, a stylus-driven touch screen, and dogs modelled on **Cherry** and
 **Scooby**.
 
-Open `index.html` — no build step, no dependencies, no assets. Everything
-(dogs, rooms, sounds) is drawn or synthesised at runtime.
+Play it at **https://badnew21.github.io/Floridogs/** — or open `index.html`
+directly. No build step, no dependencies, no image or audio files: the dogs,
+rooms and sounds are all drawn or synthesised at runtime.
+
+On a phone, use your browser's *Add to Home Screen* to get it as a fullscreen
+app with Cherry as the icon.
 
 ## Playing on a phone
 

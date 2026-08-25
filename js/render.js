@@ -297,14 +297,19 @@
     ctx.save(); ctx.translate(-skull * 0.48, -skull * 0.5); drawEar(ctx, spec, 'far', p.ear, Math.sin(t * 6) * 0.05 * (opts.earFlap || 0), p.hdRot * 0.65); ctx.restore();
 
     /* skull */
+    /* skull + muzzle + a curved bridge between them; every subpath opens with a
+       moveTo at its own start so the nonzero fill unions them cleanly */
+    var mzx = skull * 0.62 + muzzleL * 0.42, mzy = skull * 0.34;
+    var mzrx = muzzleL * 0.72, mzry = muzzleD * 0.8;
     var headRegion = new Path2D();
+    headRegion.moveTo(skull * 1.04, 0);
     headRegion.ellipse(0, 0, skull * 1.04, skull * 0.95, 0, 0, Math.PI * 2);
-    headRegion.moveTo(0, 0);
-    headRegion.ellipse(skull * 0.62 + muzzleL * 0.42, skull * 0.34, muzzleL * 0.72, muzzleD * 0.8, 0.06, 0, Math.PI * 2);
-    headRegion.moveTo(-skull * 0.2, -skull * 0.2);
-    headRegion.lineTo(skull * 0.9, -skull * 0.1);
-    headRegion.lineTo(skull * 0.95, skull * 0.9);
-    headRegion.lineTo(-skull * 0.2, skull * 0.8);
+    headRegion.moveTo(mzx + mzrx, mzy);
+    headRegion.ellipse(mzx, mzy, mzrx, mzry, 0.06, 0, Math.PI * 2);
+    headRegion.moveTo(skull * 0.1, -skull * 0.62);
+    headRegion.quadraticCurveTo(skull * 0.8, -skull * 0.5, mzx, mzy - mzry * 0.92);
+    headRegion.lineTo(mzx, mzy + mzry * 0.92);
+    headRegion.quadraticCurveTo(skull * 0.72, skull * 0.9, skull * 0.05, skull * 0.82);
     headRegion.closePath();
 
     ctx.fillStyle = coat.headDark ? coat.dark : coat.base;
@@ -325,11 +330,17 @@
     if (coat.blaze) {
       ctx.save(); ctx.clip(headRegion);
       ctx.fillStyle = coat.base;
+      /* a blaze tapers to a point between the eyes and widens down the muzzle */
       ctx.beginPath();
-      ctx.moveTo(skull * 0.28, -skull * 0.72);
-      ctx.quadraticCurveTo(skull * 0.5, -skull * 0.1, skull * 0.62, skull * 0.5);
-      ctx.quadraticCurveTo(skull * 0.9, skull * 0.9, skull * 1.5, skull * 0.72);
-      ctx.quadraticCurveTo(skull * 1.1, skull * 0.2, skull * 0.62, -skull * 0.8);
+      ctx.moveTo(skull * 0.30, -skull * 0.80);
+      ctx.bezierCurveTo(skull * 0.52, -skull * 0.4, skull * 0.62, -skull * 0.05,
+                        mzx - mzrx * 0.35, mzy - mzry * 0.78);
+      ctx.bezierCurveTo(mzx + mzrx * 0.5, mzy - mzry * 0.85, mzx + mzrx * 0.95, mzy - mzry * 0.4,
+                        mzx + mzrx * 0.92, mzy + mzry * 0.25);
+      ctx.bezierCurveTo(mzx + mzrx * 0.4, mzy + mzry * 0.5, skull * 0.7, skull * 0.55,
+                        skull * 0.50, skull * 0.10);
+      ctx.bezierCurveTo(skull * 0.44, -skull * 0.25, skull * 0.42, -skull * 0.55,
+                        skull * 0.44, -skull * 0.78);
       ctx.closePath();
       ctx.globalAlpha = 0.96;
       ctx.fill();
