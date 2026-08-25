@@ -196,7 +196,8 @@
       var ph = (t * 0.5 + i * 0.33) % 1;
       ctx.save();
       ctx.globalAlpha = 1 - ph;
-      var x = d.x + 30 * d.facing + ph * 12, y = d.y - 40 - ph * 26;
+      var s = d.spec.build.scale * (d.scale || 1);
+      var x = d.x + (d.pose.hdX * s + 12) * d.facing + ph * 10, y = d.y + d.pose.hdY * s - 8 - ph * 22;
       U.text(ctx, 'z', x, y, { size: 8 + ph * 6, align: 'center', color: '#5d7089', weight: 'bold', outline: '#fff', outlineWidth: 2 });
       ctx.restore();
     }
@@ -219,85 +220,136 @@
     }
   }
 
+  /* The DS top screen is a second camera on your dog, with a slim info bar —
+     status detail lives in the Care menu, as it does in the original. */
   UI.drawTop = function (ctx, t) {
     var d = G.dog();
-    /* paper background */
-    var g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, '#fdf6e6');
-    g.addColorStop(1, '#f0e4c9');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    if (UI.screen === 'title' || !d) { drawTitleTop(ctx, t); return; }
 
-    if (UI.screen === 'title' || !d) {
-      drawTitleTop(ctx, t);
-      return;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
+
+    /* camera: a gentle push-in that follows her around the room */
+    var camX = U.clamp(d.x, 100, 156), Z = 1.34;
+    ctx.translate(128, 128);
+    ctx.scale(Z, Z);
+    ctx.translate(-camX, -132);
+
+    if (G.mode === 'walk' && G.walk) {
+      S.street(ctx, G.walk.scroll, t, G.hour);
+      d.y = 146; R.drawDog(ctx, d, t);
+    } else if (G.mode === 'contest' && G.contest) {
+      S.field(ctx, 0, t);
+      if (G.contest.disc) S.disc(ctx, G.contest.disc.x, G.contest.disc.y - G.contest.disc.z, 11, 0.4, G.contest.disc.spin);
+      R.drawDog(ctx, d, t);
+    } else {
+      S.livingRoom(ctx, t, G.hour);
+      S.bowl(ctx, G.foodBowl.x, G.foodBowl.y, G.bowls.food, 'food');
+      S.bowl(ctx, G.waterBowl.x, G.waterBowl.y, G.bowls.water, 'water');
+      var other = G.other();
+      if (other) { other.x = 40; other.y = 108; other.facing = 1; other.scale = 0.72; R.drawDog(ctx, other, t); }
+      G.toys.forEach(function (toy) {
+        if (toy.kind === 'ball') S.ball(ctx, toy.x, toy.y - toy.z, 6, toy.spin);
+        else S.disc(ctx, toy.x, toy.y - toy.z, 10, U.clamp(toy.z / 60, 0, 0.6), toy.spin);
+      });
+      R.drawDog(ctx, d, t);
+      if (d.behavior === 'sleep') drawZzz(ctx, d, t);
+    }
+    G.emotes.forEach(function (em) { drawEmote(ctx, em); });
+    ctx.restore();
+
+    S.tint(ctx, G.hour, W, H);
+
+    /* latest message as a soft banner across the top */
+    var msg = G.messages[0];
+    if (msg && Date.now() - msg.t < 6000) {
+      ctx.save();
+      ctx.globalAlpha = U.clamp((6000 - (Date.now() - msg.t)) / 900, 0, 1);
+      U.roundRect(ctx, 8, 6, W - 16, 20, 10);
+      ctx.fillStyle = 'rgba(255,253,246,0.92)'; ctx.fill();
+      ctx.strokeStyle = 'rgba(224,185,120,0.9)'; ctx.lineWidth = 1.4; ctx.stroke();
+      var col = msg.kind === 'good' ? '#3f7a3a' : msg.kind === 'warn' ? '#a8562c' : '#4c4438';
+      var lines = U.wrapText(ctx, msg.text, W - 40, 9);
+      U.text(ctx, lines[0] + (lines.length > 1 ? '…' : ''), W / 2, 20, { size: 9, align: 'center', color: col, weight: 'bold' });
+      ctx.restore();
     }
 
-    /* header ribbon */
-    ctx.fillStyle = '#f0b64f'; ctx.fillRect(0, 0, W, 22);
-    ctx.fillStyle = '#e3a63c'; ctx.fillRect(0, 20, W, 3);
-    U.text(ctx, 'FLORIDOGS', 8, 15, { size: 12, color: '#6a4512', weight: 'bold' });
-    U.text(ctx, 'Day ' + G.day + '   ' + U.formatClock(G.clock), W - 8, 15, { size: 10, align: 'right', color: '#6a4512', weight: 'bold' });
+    /* mode readouts sit above the info bar */
+    if (G.mode === 'walk' && G.walk) {
+      var pr = U.clamp(G.walk.distance / G.walk.target, 0, 1);
+      ctx.save();
+      U.roundRect(ctx, 40, 136, 176, 16, 8);
+      ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fill();
+      U.roundRect(ctx, 43, 139, Math.max(3, 170 * pr), 10, 5);
+      ctx.fillStyle = '#7fc26a'; ctx.fill();
+      U.text(ctx, Math.round(G.walk.distance) + ' / ' + G.walk.target + ' steps · found ' + G.walk.picked,
+        128, 147, { size: 8, align: 'center', color: '#4c4438', weight: 'bold' });
+      ctx.restore();
+    } else if (G.mode === 'contest' && G.contest) {
+      ctx.save();
+      U.roundRect(ctx, 60, 132, 136, 22, 11);
+      ctx.fillStyle = 'rgba(255,255,255,0.88)'; ctx.fill();
+      U.text(ctx, 'Score ' + G.contest.score, 72, 148, { size: 12, color: '#3f3527', weight: 'bold' });
+      U.text(ctx, Math.ceil(G.contest.time) + 's', 186, 148, { size: 12, align: 'right', color: G.contest.time < 10 ? '#d33' : '#3f3527', weight: 'bold' });
+      ctx.restore();
+    }
 
-    /* portrait card */
-    panel(ctx, 6, 28, 104, 78);
+    drawInfoBar(ctx, d, t);
+  };
+
+  /* Name, hearts, clock and coins — everything else is a menu away. */
+  function drawInfoBar(ctx, d, t) {
+    var barY = H - 30;
     ctx.save();
-    ctx.beginPath(); ctx.rect(8, 30, 100, 60); ctx.clip();
-    ctx.fillStyle = '#dfeaf3'; ctx.fillRect(8, 30, 100, 60);
-    R.drawPortrait(ctx, d.rec, d.spec, 40, 62, 42, t);
+    var g = ctx.createLinearGradient(0, barY, 0, H);
+    g.addColorStop(0, 'rgba(255,251,240,0.94)');
+    g.addColorStop(1, 'rgba(240,228,201,0.96)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, barY, W, 30);
+    ctx.strokeStyle = 'rgba(200,177,140,0.9)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, barY + 0.5); ctx.lineTo(W, barY + 0.5); ctx.stroke();
     ctx.restore();
-    U.text(ctx, d.rec.name, 58, 100, { size: 12, align: 'center', color: '#3f3527', weight: 'bold' });
 
-    /* hearts */
+    /* portrait medallion */
+    ctx.save();
+    ctx.beginPath(); ctx.arc(20, barY + 15, 13, 0, Math.PI * 2);
+    ctx.fillStyle = '#e8f2f8'; ctx.fill();
+    ctx.strokeStyle = '#d6b884'; ctx.lineWidth = 1.6; ctx.stroke();
+    ctx.clip();
+    R.drawPortrait(ctx, d.rec, d.spec, 18, barY + 16, 26, t);
+    ctx.restore();
+
+    U.text(ctx, d.rec.name, 37, barY + 13, { size: 11, color: '#3f3527', weight: 'bold' });
     var hearts = G.hearts(d.rec);
     for (var i = 0; i < 5; i++) {
-      U.heart(ctx, 122 + i * 15, 32, 6);
-      ctx.fillStyle = i < hearts ? '#ef6b8a' : '#e0d9c9';
+      U.heart(ctx, 41 + i * 10, barY + 18, 4);
+      ctx.fillStyle = i < hearts ? '#ef6b8a' : '#e2dccd';
       ctx.fill();
-      ctx.strokeStyle = '#c9536f'; ctx.lineWidth = 0.8; ctx.stroke();
     }
-    U.text(ctx, d.spec.breed.breed + ' · ' + d.spec.breed.weight + ' lb', 118, 56, { size: 8, color: '#6b6152' });
 
-    /* needs */
+    /* needs shown as small coloured pips; they flash when something runs low */
     var n = d.rec.needs;
-    needBar(ctx, 118, 60, 130, 'Food', n.hunger, '#e0913c');
-    needBar(ctx, 118, 72, 130, 'Water', n.thirst, '#4ba3d8');
-    needBar(ctx, 118, 84, 130, 'Mood', n.mood, '#e2688f');
-    needBar(ctx, 118, 96, 130, 'Clean', n.clean, '#7fc26a');
-    needBar(ctx, 118, 108, 130, 'Energy', n.energy, '#b184d4');
-
-    /* coins + tricks */
-    ctx.fillStyle = '#e8c25a';
-    ctx.beginPath(); ctx.arc(16, 118, 7, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = '#c39a34'; ctx.lineWidth = 1.2; ctx.stroke();
-    U.text(ctx, String(G.coins), 28, 122, { size: 11, color: '#4c4438', weight: 'bold' });
-
-    /* mode-specific readout */
-    if (G.mode === 'walk' && G.walk) {
-      panel(ctx, 6, 130, 244, 54, 'Walk');
-      var pr = U.clamp(G.walk.distance / G.walk.target, 0, 1);
-      U.roundRect(ctx, 16, 158, 224, 10, 5); ctx.fillStyle = '#e2dccd'; ctx.fill();
-      U.roundRect(ctx, 17, 159, Math.max(2, 222 * pr), 8, 4); ctx.fillStyle = '#7fc26a'; ctx.fill();
-      U.text(ctx, Math.round(G.walk.distance) + ' / ' + G.walk.target + ' steps · found ' + G.walk.picked, 128, 152, { size: 9, align: 'center', color: '#4c4438' });
-    } else if (G.mode === 'contest' && G.contest) {
-      panel(ctx, 6, 130, 244, 54, 'Disc Competition');
-      U.text(ctx, 'Score ' + G.contest.score, 20, 158, { size: 14, color: '#3f3527', weight: 'bold' });
-      U.text(ctx, 'Catches ' + G.contest.catches + '/' + G.contest.throws, 20, 174, { size: 9, color: '#6b6152' });
-      U.text(ctx, Math.ceil(G.contest.time) + 's', 238, 160, { size: 16, align: 'right', color: G.contest.time < 10 ? '#d33' : '#3f3527', weight: 'bold' });
-    } else {
-      /* message log */
-      panel(ctx, 6, 130, 244, 54);
-      for (var m = 0; m < Math.min(3, G.messages.length); m++) {
-        var msg = G.messages[m];
-        var col = msg.kind === 'good' ? '#3f7a3a' : msg.kind === 'warn' ? '#a8562c' : '#4c4438';
-        ctx.save();
-        ctx.globalAlpha = 1 - m * 0.28;
-        var lines = U.wrapText(ctx, msg.text, 228, 9);
-        U.text(ctx, lines[0] + (lines.length > 1 ? '…' : ''), 14, 148 + m * 15, { size: 9, color: col });
-        ctx.restore();
-      }
-      if (!G.messages.length) U.text(ctx, 'Tap the touch screen to play with ' + d.rec.name + '.', 14, 150, { size: 9, color: '#8b8271' });
+    var pips = [
+      { v: n.hunger, c: '#e0913c' }, { v: n.thirst, c: '#4ba3d8' }, { v: n.mood, c: '#e2688f' },
+      { v: n.clean, c: '#7fc26a' }, { v: n.energy, c: '#b184d4' }
+    ];
+    for (var p = 0; p < pips.length; p++) {
+      var x = 110 + p * 13;
+      U.roundRect(ctx, x, barY + 8, 11, 14, 3);
+      ctx.fillStyle = '#e6dfd0'; ctx.fill();
+      var h2 = Math.max(2, 12 * pips[p].v);
+      U.roundRect(ctx, x + 1, barY + 21 - h2, 9, h2, 2.5);
+      ctx.fillStyle = pips[p].v < 0.25 ? (Math.sin(UI.t * 8) > 0 ? '#d95a4a' : '#f0a094') : pips[p].c;
+      ctx.fill();
     }
-  };
+
+    ctx.fillStyle = '#e8c25a';
+    ctx.beginPath(); ctx.arc(180, barY + 15, 5.5, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#c39a34'; ctx.lineWidth = 1; ctx.stroke();
+    U.text(ctx, String(G.coins), 189, barY + 19, { size: 10, color: '#4c4438', weight: 'bold' });
+    U.text(ctx, U.formatClock(G.clock), W - 5, barY + 13, { size: 9, align: 'right', color: '#6b6152', weight: 'bold' });
+    U.text(ctx, 'Day ' + G.day, W - 5, barY + 24, { size: 8, align: 'right', color: '#8b8271' });
+  }
 
   function drawTitleTop(ctx, t) {
     var g = ctx.createLinearGradient(0, 0, 0, H);
@@ -428,10 +480,6 @@
     /* time of day only dims the room, never the controls */
     S.tint(ctx, G.hour, W, TRAY_Y);
 
-    /* top-left status chips */
-    chip(ctx, 6, 6, 'Coins ' + G.coins);
-    if (d) chip(ctx, 6, 22, hearts(d) + ' ' + d.rec.name);
-
     /* call + tricks */
     btn(ctx, 'call', W - 60, 6, 54, 20, 'Call', { size: 9 });
     btn(ctx, 'tricks', W - 60, 30, 54, 20, 'Tricks', { size: 9, active: UI.trickPanel });
@@ -494,7 +542,7 @@
 
   function drawTrickPanel(ctx, t) {
     var d = G.dog(); if (!d) return;
-    panel(ctx, 6, 52, 244, 74, 'Commands');
+    panel(ctx, 6, 52, 244, 84, 'Commands');
     var cols = 3;
     for (var i = 0; i < G.TRICKS.length; i++) {
       var tr = G.TRICKS[i];
@@ -507,7 +555,8 @@
       U.roundRect(ctx, cx + 4, cy + 16, Math.max(1, 64 * known), 3, 1.5);
       ctx.fillStyle = '#5fa8e0'; ctx.fill();
     }
-    U.text(ctx, 'Teach by hand: ' + G.TRICKS[UI.hintTrick || 0].how, 128, 120, { size: 7.5, align: 'center', color: '#8b8271' });
+    U.text(ctx, 'Teach by hand: ' + G.TRICKS[Math.floor(UI.t / 4) % G.TRICKS.length].label + ' — ' +
+      G.TRICKS[Math.floor(UI.t / 4) % G.TRICKS.length].how, 128, 130, { size: 7.5, align: 'center', color: '#8b8271' });
   }
 
   function drawNamePrompt(ctx, t) {
@@ -666,11 +715,18 @@
           ['Best disc score', String(st.discBest)]
         ];
         for (var r = 0; r < rows.length; r++) {
-          U.text(ctx, rows[r][0], 30, 42 + r * 14, { size: 9, color: '#6b6152' });
-          U.text(ctx, rows[r][1], 226, 42 + r * 14, { size: 9, align: 'right', color: '#3f3527', weight: 'bold' });
+          var rx = r < 4 ? 28 : 134, ry = 42 + (r % 4) * 13;
+          U.text(ctx, rows[r][0], rx, ry, { size: 8, color: '#6b6152' });
+          U.text(ctx, rows[r][1], rx + 94, ry, { size: 8, align: 'right', color: '#3f3527', weight: 'bold' });
         }
-        btn(ctx, 'care:rename', 30, 156, 84, 18, 'Rename', { size: 9 });
-        btn(ctx, 'care:accessory', 122, 156, 104, 18, 'Accessory: ' + (d.rec.accessory || 'none'), { size: 8 });
+        var nn = d.rec.needs;
+        needBar(ctx, 28, 96, 200, 'Food', nn.hunger, '#e0913c');
+        needBar(ctx, 28, 108, 200, 'Water', nn.thirst, '#4ba3d8');
+        needBar(ctx, 28, 120, 200, 'Mood', nn.mood, '#e2688f');
+        needBar(ctx, 28, 132, 200, 'Clean', nn.clean, '#7fc26a');
+        needBar(ctx, 28, 144, 200, 'Energy', nn.energy, '#b184d4');
+        btn(ctx, 'care:rename', 28, 158, 84, 16, 'Rename', { size: 9 });
+        btn(ctx, 'care:accessory', 120, 158, 108, 16, 'Accessory: ' + (d.rec.accessory || 'none'), { size: 8 });
       }
       btn(ctx, 'care:close', 108, 176, 40, 14, 'Close', { size: 8 });
     } else if (UI.overlay === 'kennel') {

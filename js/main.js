@@ -10,14 +10,17 @@
   var topCtx = topCv.getContext('2d');
   var btmCtx = btmCv.getContext('2d');
 
+  /* Canvas backing size only changes on resize, so measuring every frame
+     would force a layout for nothing. */
   function fit(canvas, ctx) {
     var rect = canvas.getBoundingClientRect();
-    var dpr = Math.min(global.devicePixelRatio || 1, 3);
+    var dpr = Math.min(global.devicePixelRatio || 1, 2);
     var w = Math.max(1, Math.round(rect.width * dpr));
     var h = Math.max(1, Math.round(rect.height * dpr));
     if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
     ctx.setTransform(w / LW, 0, 0, h / LH, 0, 0);
   }
+  var needsFit = true;
 
   /* --------------------------------------------------------------- input -- */
   var IN = {
@@ -526,13 +529,17 @@
   }
 
   /* ------------------------------------------------------------- rollover */
+  var topFrame = 0;
   function drawEverything(t) {
-    fit(topCv, topCtx);
-    fit(btmCv, btmCtx);
-    topCtx.clearRect(0, 0, LW, LH);
+    if (needsFit) { fit(topCv, topCtx); fit(btmCv, btmCtx); needsFit = false; }
+    /* the touch screen is what you interact with, so it always redraws;
+       the top screen is a passive camera and can run at half rate */
     btmCtx.clearRect(0, 0, LW, LH);
-    UI.drawTop(topCtx, t);
     UI.drawBottom(btmCtx, t);
+    if ((topFrame++ & 1) === 0) {
+      topCtx.clearRect(0, 0, LW, LH);
+      UI.drawTop(topCtx, t);
+    }
   }
 
   /* ---------------------------------------------------------------- loop -- */
@@ -595,7 +602,8 @@
     G.newGame();               /* a blank slate until Continue loads a save */
     bindShellButtons();
     bindPointer();
-    global.addEventListener('resize', function () { fit(topCv, topCtx); fit(btmCv, btmCtx); });
+    global.addEventListener('resize', function () { needsFit = true; });
+    global.addEventListener('orientationchange', function () { needsFit = true; });
     global.addEventListener('visibilitychange', function () { if (document.hidden) G.persist(); });
     global.addEventListener('pagehide', function () { G.persist(); });
     requestAnimationFrame(frame);

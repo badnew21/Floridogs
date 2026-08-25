@@ -19,7 +19,7 @@
              fpX: 56, fpY: -3, rpX: -14, rpY: -2, ear: 0.05, mouth: 0.1, lid: 0.15, tailBase: 0.6, tailUp: 0 },
     sleep: { hipX: -26, hipY: -26, shX: 16, shY: -32, hdX: 54, hdY: -17, hdRot: 0.34,
              fpX: 52, fpY: -3, rpX: -12, rpY: -2, ear: 0.25, mouth: 0, lid: 1, tailBase: 0.9, tailUp: 0 },
-    eat:   { hipX: -34, hipY: -84, shX: 30, shY: -86, hdX: 62, hdY: -44, hdRot: 0.55,
+    eat:   { hipX: -34, hipY: -84, shX: 30, shY: -86, hdX: 60, hdY: -46, hdRot: 0.42,
              fpX: 32, fpY: 0, rpX: -36, rpY: 0, ear: 0.15, mouth: 0.5, lid: 0.25, tailBase: -0.4, tailUp: 0 },
     beg:   { hipX: -22, hipY: -34, shX: 4, shY: -92, hdX: 30, hdY: -122, hdRot: -0.15,
              fpX: 24, fpY: -60, rpX: -8, rpY: 0, ear: -0.25, mouth: 0.35, lid: 0, tailBase: 0.1, tailUp: 0 },
@@ -217,6 +217,21 @@
     ctx.restore();
   }
 
+  function paintDirt(ctx, spec, region, amount, seed) {
+    if (amount <= 0.02) return;
+    ctx.save();
+    ctx.clip(region.path);
+    var rnd = U.seeded(seed ^ 0x5eed);
+    ctx.globalAlpha = U.clamp(amount, 0, 1) * 0.5;
+    ctx.fillStyle = '#6b5233';
+    for (var i = 0; i < 9; i++) {
+      var x = -52 + rnd() * 96, y = -58 + rnd() * 38;
+      blob(ctx, x, y, 5 + rnd() * 7, 3 + rnd() * 4, rnd() * 3, seed + i * 31);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
   function paintShading(ctx, region) {
     ctx.save();
     ctx.clip(region.path);
@@ -230,11 +245,11 @@
   }
 
   /* ------------------------------------------------------------------ head -- */
-  function drawEar(ctx, spec, side, droop, swing) {
+  function drawEar(ctx, spec, side, droop, swing, counter) {
     var coat = spec.coat, b = spec.build;
     var len = 26 * b.earLen, w = 13 * b.earLen;
     ctx.save();
-    ctx.rotate(0.26 + droop * 0.55 + swing * (side === 'near' ? 1 : 0.6));
+    ctx.rotate(0.26 + droop * 0.55 + swing * (side === 'near' ? 1 : 0.6) - (counter || 0));
     ctx.beginPath();
     ctx.moveTo(0, 0);
     ctx.quadraticCurveTo(-w * 0.9, len * 0.45, -w * 0.35, len);
@@ -243,6 +258,12 @@
     ctx.closePath();
     ctx.fillStyle = side === 'far' ? coat.darkShade : coat.dark;
     ctx.fill();
+    if (side === 'near') {
+      /* a soft rim keeps a dark ear readable against a dark head */
+      ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+    }
     if (side === 'near') {
       ctx.globalAlpha = 0.35;
       ctx.beginPath();
@@ -269,7 +290,7 @@
     ctx.rotate(p.hdRot);
 
     /* far ear behind the skull */
-    ctx.save(); ctx.translate(-skull * 0.48, -skull * 0.5); drawEar(ctx, spec, 'far', p.ear, Math.sin(t * 6) * 0.05 * (opts.earFlap || 0)); ctx.restore();
+    ctx.save(); ctx.translate(-skull * 0.48, -skull * 0.5); drawEar(ctx, spec, 'far', p.ear, Math.sin(t * 6) * 0.05 * (opts.earFlap || 0), p.hdRot * 0.65); ctx.restore();
 
     /* skull */
     var headRegion = new Path2D();
@@ -412,7 +433,7 @@
     }
 
     /* near ear on top */
-    ctx.save(); ctx.translate(-skull * 0.22, -skull * 0.62); drawEar(ctx, spec, 'near', p.ear, Math.sin(t * 6 + 1) * 0.06 * (opts.earFlap || 0)); ctx.restore();
+    ctx.save(); ctx.translate(-skull * 0.22, -skull * 0.62); drawEar(ctx, spec, 'near', p.ear, Math.sin(t * 6 + 1) * 0.06 * (opts.earFlap || 0), p.hdRot * 0.65); ctx.restore();
 
     ctx.restore();
   }
@@ -422,8 +443,8 @@
     if (!kind || kind === 'none') return;
     var b = spec.build;
     /* sit the collar low on the neck, just ahead of the chest */
-    var nx = U.lerp(p.shX + 12, p.hdX - 10, 0.5);
-    var ny = U.lerp(p.shY - 2, p.hdY + 16, 0.5);
+    var nx = U.lerp(p.shX + 12, p.hdX - 10, 0.34);
+    var ny = U.lerp(p.shY - 2, p.hdY + 16, 0.34);
     var ang = Math.atan2(p.hdY + 14 - (p.shY - 2), p.hdX - 12 - (p.shX + 12));
     var rx = 11 * b.neck, ry = 5.5 * b.neck;
 
@@ -512,6 +533,7 @@
     paintCoat(ctx, spec, region, d.rec.seed);
     paintPatches(ctx, spec, region, d.rec.seed);
     paintSpeckles(ctx, spec, region);
+    paintDirt(ctx, spec, region, 1 - (d.rec.needs ? d.rec.needs.clean : 1), d.rec.seed);
     paintShading(ctx, region);
     ctx.restore();
 

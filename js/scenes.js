@@ -6,15 +6,17 @@
 
   var S = {};
 
-  /* Day/night tint applied over a scene. `h` is game hours 0..24. */
+  /* Day/night grade over a scene. Multiply keeps colours reading as the same
+     room at dusk rather than washing everything toward grey. `h` is 0..24. */
   S.tint = function (ctx, h, w, hgt) {
-    var a = 0, col = '#0a1436';
-    if (h < 6) a = 0.42;
-    else if (h < 8) a = U.lerp(0.42, 0, (h - 6) / 2);
-    else if (h > 21) a = U.clamp((h - 21) / 3, 0, 1) * 0.42;
-    else if (h > 18) { a = U.lerp(0, 0.18, (h - 18) / 3); col = '#c4621f'; }
-    if (a <= 0.001) return;
+    var a = 0, col = '#5f6fae';
+    if (h < 5.5) a = 0.92;
+    else if (h < 7.5) a = U.lerp(0.92, 0, (h - 5.5) / 2);
+    else if (h >= 20.5) a = U.clamp((h - 20.5) / 1.5, 0, 1) * 0.92;
+    else if (h >= 17.5) { a = U.lerp(0, 0.45, (h - 17.5) / 3); col = '#ffa552'; }
+    if (a <= 0.005) return;
     ctx.save();
+    ctx.globalCompositeOperation = 'multiply';
     ctx.globalAlpha = a;
     ctx.fillStyle = col;
     ctx.fillRect(0, 0, w, hgt);

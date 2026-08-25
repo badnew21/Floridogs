@@ -69,17 +69,22 @@ canvas {
   text-align: center; font-size: 11px; color: #8b94a4;
 }
 
-/* Landscape phones / wide screens: put the two DS screens side by side. */
-@media (orientation: landscape) and (max-height: 560px) {
-  .ds { flex-direction: row; gap: 10px; flex-wrap: wrap; }
-  .ds-hinge { display: none; }
+/* Landscape phones: the two screens sit side by side, sized so both fit. */
+@media (orientation: landscape) and (max-height: 620px) {
+  .ds { flex-direction: row; gap: 8px; flex-wrap: nowrap; }
+  .ds-hinge, .ds-brand { display: none; }
   .screen-wrap { width: auto; }
-  .screen-bezel { max-height: 84vh; width: auto; height: 84vh; }
-  .ds-controls { flex-direction: column; }
-  .ds-brand { display: none; }
+  .screen-bezel {
+    height: min(94vh, calc(45vw * 3 / 4));
+    width: auto;
+    max-height: none;
+  }
+  .ds-controls { flex-direction: column; gap: 6px; margin-top: 0; }
+  .ds-btn { min-width: 34px; height: 26px; font-size: 12px; }
+  .ds-btn.wide { min-width: 48px; font-size: 9px; }
 }
 
-/* Desktop: keep the handheld feel but bigger. */
-@media (min-width: 900px) and (orientation: landscape) {
+/* Roomy screens: keep the stacked handheld look, just bigger. */
+@media (min-width: 900px) and (min-height: 620px) {
   .screen-bezel { max-height: 42vh; height: 42vh; width: auto; }
 }

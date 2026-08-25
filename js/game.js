@@ -206,6 +206,7 @@
     G.addBond(d, 0.00035 * strength);
     d.rec.stats.pets++;
     d.petCharge = (d.petCharge || 0) + strength;
+    d.petting = 0.5;
     if (d.petCharge > 26) {
       d.petCharge = 0;
       G.emote(d, 'heart');
@@ -243,9 +244,18 @@
 
   G.washAt = function (d) {
     var n = d.rec.needs;
+    var before = n.clean;
     n.clean = U.clamp(n.clean + 0.004, 0, 1);
     d.bubbles = U.clamp(d.bubbles + 0.03, 0, 1);
     if (U.chance(0.04)) G.emote(d, 'bubble', (Math.random() - 0.5) * 40, -10);
+    if (before < 0.99 && n.clean >= 0.99) {
+      setBehavior(d, 'shakeoff', 1.4);
+      d.bubbles = 0;
+      G.addBond(d, 0.01);
+      G.say(d.rec.name + ' shakes off — sparkling clean!', 'good');
+      Audio.splash();
+      for (var i = 0; i < 6; i++) G.emote(d, 'bubble', (Math.random() - 0.5) * 50, -20);
+    }
   };
 
   G.giveTreat = function (d) {
@@ -404,8 +414,8 @@
         break;
 
       case 'shakeoff':
-        n.clean = U.clamp(n.clean - 0.0, 0, 1);
-        if (d.btimer <= 0) setBehavior(d, 'idle', 1);
+        d.tilt = Math.sin((Date.now() - d.behaviorStart) / 26) * 0.12;
+        if (d.btimer <= 0) { d.tilt = 0; setBehavior(d, 'idle', 1); }
         break;
 
       case 'rollover':
@@ -483,6 +493,12 @@
     if (d.wagTarget) { wagWant = Math.max(wagWant, d.wagTarget); d.wagTarget = U.approach(d.wagTarget, 0, 0.06, dt); }
     d.wag = U.approach(d.wag, wagWant, 0.08, dt);
 
+    if (d.petting > 0) {
+      d.petting -= dt;
+      d.pose.lid = U.clamp(d.pose.lid + 0.45, 0, 0.85);
+      d.pose.ear += 0.12;
+      d.pose.hdRot += 0.05;
+    }
     d.panting = d.running || d.behavior === 'happy' || n.thirst < 0.3;
     d.scale = depthScale(d);
     d.bubbles = U.approach(d.bubbles, 0, 0.02, dt);
