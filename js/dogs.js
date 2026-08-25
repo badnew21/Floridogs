@@ -12,7 +12,7 @@
       name: 'Cherry',
       breed: 'Catahoula Mix',
       weight: 60,
-      bio: 'Brindle and freckles, a whip tail that never stops, and a strong opinion about pearls.',
+      bio: 'Brindle, freckles, and a whip tail that never stops.',
       personality: { energy: 0.85, affection: 0.95, focus: 0.7, appetite: 0.6, mischief: 0.5 },
       voice: { pitch: 1.0, big: true },
       build: {
@@ -26,6 +26,8 @@
         muzzleDepth: 1.05,
         earLen: 1.0,
         earType: 'drop',
+        headDX: 0,
+        headDY: 0,
         tailLen: 1.0,
         tailThin: 1.0
       },
@@ -66,24 +68,28 @@
     scooby: {
       id: 'scooby',
       name: 'Scooby',
-      breed: 'Shepherd Mix',
-      weight: 75,
-      bio: 'Sandy shepherd mix with black eyebrows, a greying muzzle and absolutely no sense of urgency.',
-      personality: { energy: 0.5, affection: 0.88, focus: 0.55, appetite: 0.95, mischief: 0.55 },
-      voice: { pitch: 0.78, big: true },
+      breed: 'Foxhound/Ridgeback',
+      weight: 100,
+      bio: 'A hundred pounds of hound. No sense of urgency.',
+      personality: { energy: 0.58, affection: 0.88, focus: 0.42, appetite: 0.95, mischief: 0.6 },
+      voice: { pitch: 0.68, big: true, bay: true },
       build: {
-        scale: 0.62,
-        bodyLen: 1.08,
+        /* 100 lb of hound: tall and long-legged, deep chest, long muzzle,
+           big drop ears. Cherry sits at scale 0.54 for 60 lb. */
+        scale: 0.67,
+        bodyLen: 1.12,
         chest: 1.14,
-        legThick: 1.16,
-        neck: 1.08,
-        skull: 1.1,
-        muzzleLen: 1.05,
-        muzzleDepth: 1.02,
-        earLen: 1.2,
+        legThick: 1.12,
+        neck: 1.32,
+        skull: 1.12,
+        muzzleLen: 1.08,
+        muzzleDepth: 1.06,
+        earLen: 1.22,
         earType: 'drop',
-        tailLen: 1.08,
-        tailThin: 0.88
+        headDX: -8,
+        headDY: 6,
+        tailLen: 1.16,
+        tailThin: 0.92
       },
       coat: {
         base: '#c68f4a',
@@ -110,6 +116,7 @@
         brindleStripes: 0,
         tailTipWhite: 0,
         collarColor: '#79cfe3',
+        ridge: true,
         patches: [
           { part: 'body', x: 2, y: -84, rx: 27, ry: 13, rot: -0.04, color: '#a5702f' },
           { part: 'body', x: -30, y: -80, rx: 17, ry: 11, rot: 0.08, color: '#a5702f' }

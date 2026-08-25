@@ -307,6 +307,33 @@
     ctx.restore();
   }
 
+  /* Ridgeback trait: a narrow band of coat lying the wrong way along the spine,
+     with a pair of crown whorls at the shoulder end. */
+  function paintRidge(ctx, spec, region, p) {
+    if (!spec.coat.ridge) return;
+    var back = [
+      { x: p.shX + 6, y: p.shY - 4 },
+      { x: U.lerp(p.shX, p.hipX, 0.35), y: U.lerp(p.shY, p.hipY, 0.35) - 6 },
+      { x: U.lerp(p.shX, p.hipX, 0.7), y: U.lerp(p.shY, p.hipY, 0.7) - 6 },
+      { x: p.hipX + 2, y: p.hipY - 4 }
+    ];
+    ctx.save();
+    ctx.clip(region.path);
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = spec.coat.baseShade;
+    ctx.fill(limbPath(back, [1.2, 3.4, 2.6, 1.0]));
+    /* whorls */
+    ctx.globalAlpha = 0.42;
+    ctx.strokeStyle = spec.coat.baseShade;
+    ctx.lineWidth = 1.1;
+    for (var i = 0; i < 2; i++) {
+      ctx.beginPath();
+      ctx.arc(back[1].x - i * 7, back[1].y + 3, 2.6, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   function paintShading(ctx, region) {
     ctx.save();
     ctx.clip(region.path);
@@ -589,11 +616,15 @@
   function drawAccessory(ctx, spec, p, kind) {
     if (!kind || kind === 'none') return;
     var b = spec.build;
-    /* sit the collar low on the neck, just ahead of the chest */
-    var nx = U.lerp(p.shX + 12, p.hdX - 10, 0.2);
-    var ny = U.lerp(p.shY - 2, p.hdY + 16, 0.2) + 3;
-    var ang = Math.atan2(p.hdY + 14 - (p.shY - 2), p.hdX - 12 - (p.shX + 12));
-    var rx = 11 * b.neck, ry = 5.5 * b.neck;
+    /* Ride the neck's own axis — the same two points the neck is drawn between —
+       so the collar keeps wrapping it whatever the build or pose does. */
+    var na = { x: p.shX - 4, y: p.shY + 12 };
+    var nb2 = { x: p.hdX - 12, y: p.hdY + 12 };
+    var nx = U.lerp(na.x, nb2.x, 0.55);
+    var ny = U.lerp(na.y, nb2.y, 0.55);
+    var ang = Math.atan2(nb2.y - na.y, nb2.x - na.x);
+    var neckW = 11 * b.neck;
+    var rx = neckW * 1.12, ry = neckW * 0.46;
 
     ctx.save();
     ctx.translate(nx, ny);

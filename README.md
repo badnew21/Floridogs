@@ -85,9 +85,12 @@ her pink pearl necklace, which is her default accessory.
 Her tongue hangs out the way it does in most photographs of her: always while
 she pants, and otherwise on and off as she idles.
 
-**Scooby** is drawn from his photo too: a bigger, heavier shepherd mix in sandy
-tan, with large dark folded ears, black brow marks over the eyes, a cream muzzle
-gone grey around the lips and chin, and his light blue collar.
+**Scooby** is drawn from his photo too: a 100 lb foxhound/ridgeback mix in sandy
+tan — long-legged and deep-chested, with a hound's long muzzle and big dark
+folded ears, black brow marks over the eyes, a cream muzzle gone grey around the
+lips and chin, his light blue collar, and a ridgeback's dorsal ridge up the
+spine. He bays rather than barks. Next to Cherry's 60 lb he stands a clear head
+taller.
 
 Both dogs are described entirely by data — coat colours, patch shapes, ear
 length, muzzle depth, personality weights — in one object each in `js/dogs.js`.

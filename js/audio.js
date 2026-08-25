@@ -39,33 +39,43 @@
   }
 
   /* A bark: a short noisy burst pushed through a moving band-pass, plus a voiced tone. */
-  A.bark = function (pitch, big) {
+  A.bark = function (pitch, big, bay) {
     if (!A.enabled) return;
     var ctx = ac(); if (!ctx) return;
     var t = ctx.currentTime;
     pitch = pitch || 1;
     var base = (big ? 160 : 260) * pitch;
+    var dur = bay ? 0.62 : 0.25;
 
     var osc = ctx.createOscillator();
     osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(base * 1.6, t);
-    osc.frequency.exponentialRampToValueAtTime(base * 0.75, t + 0.13);
+    if (bay) {
+      /* a hound's bay: rises, holds, then falls away */
+      osc.frequency.setValueAtTime(base * 1.15, t);
+      osc.frequency.exponentialRampToValueAtTime(base * 1.75, t + 0.14);
+      osc.frequency.setValueAtTime(base * 1.75, t + 0.3);
+      osc.frequency.exponentialRampToValueAtTime(base * 0.85, t + dur);
+    } else {
+      osc.frequency.setValueAtTime(base * 1.6, t);
+      osc.frequency.exponentialRampToValueAtTime(base * 0.75, t + 0.13);
+    }
 
     var bp = ctx.createBiquadFilter();
     bp.type = 'bandpass';
-    bp.Q.value = 3.2;
-    bp.frequency.setValueAtTime(base * 4.2, t);
-    bp.frequency.exponentialRampToValueAtTime(base * 1.7, t + 0.15);
+    bp.Q.value = bay ? 5.5 : 3.2;
+    bp.frequency.setValueAtTime(base * (bay ? 3.0 : 4.2), t);
+    bp.frequency.exponentialRampToValueAtTime(base * 1.7, t + (bay ? 0.4 : 0.15));
 
     var n = noise(ctx);
-    var ng = ctx.createGain(); ng.gain.value = 0.5;
+    var ng = ctx.createGain(); ng.gain.value = bay ? 0.2 : 0.5;
     n.connect(ng); ng.connect(bp);
     osc.connect(bp);
 
-    var g = env(ctx, bp, t, 0.012, 0.035, 0.13, 0.32);
+    var g = bay ? env(ctx, bp, t, 0.05, 0.28, 0.3, 0.3)
+                : env(ctx, bp, t, 0.012, 0.035, 0.13, 0.32);
     g.connect(ctx.destination);
     osc.start(t); n.start(t);
-    osc.stop(t + 0.25); n.stop(t + 0.25);
+    osc.stop(t + dur + 0.1); n.stop(t + dur + 0.1);
   };
 
   A.whine = function () {

@@ -384,7 +384,7 @@
         if (moveToward(d, dt, toy.x, toy.y, 108)) {
           d.carrying = toy;
           toy.held = true;
-          Audio.bark(d.spec.voice.pitch * 1.1, false);
+          Audio.bark(d.spec.voice.pitch * 1.1, d.spec.voice.big, d.spec.voice.bay);
           d.moveTo = { x: G.handHome.x, y: G.handHome.y };
           setBehavior(d, 'fetchBack', 8);
         }
@@ -404,12 +404,12 @@
         break;
 
       case 'bark':
-        if (!d.barked) { d.barked = true; Audio.bark(d.spec.voice.pitch, d.spec.voice.big); }
+        if (!d.barked) { d.barked = true; Audio.bark(d.spec.voice.pitch, d.spec.voice.big, d.spec.voice.bay); }
         if (d.btimer <= 0) { d.barked = false; setBehavior(d, 'idle', U.rand(1, 3)); }
         break;
 
       case 'speakCmd':
-        if (!d.barked) { d.barked = true; Audio.bark(d.spec.voice.pitch, d.spec.voice.big); }
+        if (!d.barked) { d.barked = true; Audio.bark(d.spec.voice.pitch, d.spec.voice.big, d.spec.voice.bay); }
         if (d.btimer <= 0) { d.barked = false; setBehavior(d, 'sit', 2); }
         break;
 
@@ -465,9 +465,12 @@
 
     var tp = R.POSE[target] || R.POSE.stand;
     var rate = 0.12;
+    var b = d.spec.build;
     for (var i = 0; i < R.POSE_KEYS.length; i++) {
       var k = R.POSE_KEYS[i];
-      d.pose[k] = U.approach(d.pose[k], tp[k], rate, dt);
+      /* head placement is per-build: a heavy hound carries it closer in */
+      var off = k === 'hdX' ? (b.headDX || 0) : k === 'hdY' ? (b.headDY || 0) : 0;
+      d.pose[k] = U.approach(d.pose[k], tp[k] + off, rate, dt);
     }
 
     /* head follows whatever it is interested in */

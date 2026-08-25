@@ -72,6 +72,25 @@
     ctx.restore();
   };
 
+  /* Draw text at the largest size that still fits maxWidth, so a long dog name
+     or breed cannot run over the label beside it. */
+  U.fitText = function (ctx, str, x, y, maxWidth, opts) {
+    opts = opts || {};
+    var size = opts.size || 10, min = opts.min || 6;
+    ctx.save();
+    while (size > min) {
+      ctx.font = (opts.weight || '') + ' ' + size + 'px "Trebuchet MS", system-ui, sans-serif';
+      if (ctx.measureText(str).width <= maxWidth) break;
+      size -= 0.5;
+    }
+    ctx.restore();
+    var o = {};
+    for (var k in opts) o[k] = opts[k];
+    o.size = size;
+    U.text(ctx, str, x, y, o);
+    return size;
+  };
+
   U.wrapText = function (ctx, str, maxWidth, size) {
     ctx.save();
     ctx.font = size + 'px "Trebuchet MS", system-ui, sans-serif';

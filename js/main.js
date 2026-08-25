@@ -476,7 +476,7 @@
           c.score += pts; c.catches++;
           c.lastScore = pts; c.lastScoreX = dz.x; c.lastScoreY = dz.y - dz.z - 20; c.lastScoreLife = 1.2;
           G.emote(d, 'star');
-          Audio.bark(d.spec.voice.pitch * 1.15, false);
+          Audio.bark(d.spec.voice.pitch * 1.15, d.spec.voice.big, d.spec.voice.bay);
           d.hop = -22;
         }
       }

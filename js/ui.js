@@ -426,17 +426,21 @@
       var previewRec = global.FD.Dogs.create(id, b.name);
       var previewSpec = global.FD.Dogs.spec(previewRec);
       var pd = {
-        rec: previewRec, spec: previewSpec, x: x + w / 2, y: y + 62, facing: -1, scale: 0.82,
+        rec: previewRec, spec: previewSpec, x: x + w / 2 - 4, y: y + 60, facing: -1, scale: 0.72,
         pose: R.blankPose(), wag: 0.7, blink: 0, gaitAmp: 0, gaitPhase: 0, hop: 0
       };
       pd.pose.mouth = 0.3;
+      pd.pose.hdX += previewSpec.build.headDX || 0;
+      pd.pose.hdY += previewSpec.build.headDY || 0;
+      pd.tongue = id === 'cherry' ? 0.55 : 0;
       R.drawDog(ctx, pd, t + i);
       ctx.restore();
       U.text(ctx, b.name, x + w / 2, y + 80, { size: 13, align: 'center', color: '#3f3527', weight: 'bold' });
-      U.text(ctx, b.breed + ' · ' + b.weight + ' lb', x + w / 2, y + 92, { size: 8, align: 'center', color: '#6b6152' });
+      U.text(ctx, b.breed, x + w / 2, y + 91, { size: 8, align: 'center', color: '#6b6152' });
+      U.text(ctx, b.weight + ' lb', x + w / 2, y + 100, { size: 8, align: 'center', color: '#6b6152' });
       var lines = U.wrapText(ctx, b.bio, w - 14, 7);
       for (var l = 0; l < Math.min(2, lines.length); l++) {
-        U.text(ctx, lines[l], x + w / 2, y + 104 + l * 9, { size: 7, align: 'center', color: '#8b8271' });
+        U.text(ctx, lines[l], x + w / 2, y + 106 + l * 8, { size: 7, align: 'center', color: '#8b8271' });
       }
       btn(ctx, 'adopt:' + id, x + 14, y + h - 2, w - 28, 20, owned ? 'Adopted' : 'Adopt', { active: !owned, size: 9 });
     }
@@ -733,7 +737,12 @@
         for (var r = 0; r < rows.length; r++) {
           var rx = r < 4 ? 28 : 134, ry = 42 + (r % 4) * 13;
           U.text(ctx, rows[r][0], rx, ry, { size: 8, color: '#6b6152' });
-          U.text(ctx, rows[r][1], rx + 94, ry, { size: 8, align: 'right', color: '#3f3527', weight: 'bold' });
+          ctx.save();
+          ctx.font = '8px "Trebuchet MS", system-ui, sans-serif';
+          var labelW = ctx.measureText(rows[r][0]).width;
+          ctx.restore();
+          U.fitText(ctx, rows[r][1], rx + 94, ry, 84 - labelW,
+                    { size: 8, align: 'right', color: '#3f3527', weight: 'bold' });
         }
         var nn = d.rec.needs;
         needBar(ctx, 28, 90, 200, 'Food', nn.hunger, '#e0913c');
